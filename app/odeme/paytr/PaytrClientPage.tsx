@@ -1,39 +1,48 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
-export default function PaytrClientPage() {
+export default function PayTRClientPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const token = searchParams.get("token");
+  const orderNumber = searchParams.get("orderNumber");
+  const [loading, setLoading] = useState(true);
 
-  // PayTR'den dönen parametrelerin isimlerini sen ne kullanıyorsan ona göre güncelle
-  const status = searchParams.get("status"); // örnek
-  const message = searchParams.get("message"); // örnek
+  useEffect(() => {
+    if (!token) {
+      router.push("/odeme");
+      return;
+    }
 
-  // Burayı PayTR entegrasyonuna göre özelleştirebilirsin
-  if (status === "success") {
+    setLoading(false);
+  }, [token, router]);
+
+  if (loading) {
     return (
-      <div className="max-w-lg mx-auto py-10 text-center">
-        <h1 className="text-2xl font-semibold mb-4">Ödeme Başarılı</h1>
-        <p>Teşekkür ederiz. Siparişiniz alınmıştır.</p>
+      <div className="container mx-auto px-4 py-16 text-center">
+        <p>Ödeme sayfası yükleniyor...</p>
       </div>
     );
   }
 
-  if (status === "fail") {
-    return (
-      <div className="max-w-lg mx-auto py-10 text-center">
-        <h1 className="text-2xl font-semibold mb-4">Ödeme Başarısız</h1>
-        <p>Ödeme işlemi tamamlanamadı. Lütfen tekrar deneyin.</p>
-        {message && <p className="text-sm text-gray-500 mt-4">{message}</p>}
-      </div>
-    );
-  }
-
-  // Parametre yoksa:
   return (
-    <div className="max-w-lg mx-auto py-10 text-center">
-      <h1 className="text-2xl font-semibold mb-4">Ödeme Durumu</h1>
-      <p>Ödeme sonucu alınamadı. Eğer sorun yaşıyorsanız bizimle iletişime geçin.</p>
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-2xl font-bold mb-4">Ödeme</h1>
+      <div className="bg-white p-6 rounded-lg shadow">
+        <iframe
+          src={`https://www.paytr.com/odeme/guvenli/${token}`}
+          id="paytriframe"
+          width="100%"
+          height="600"
+          style={{ border: "none" }}
+          allow="payment"
+        />
+      </div>
+      <p className="text-sm text-gray-600 mt-4 text-center">
+        Ödeme işleminiz tamamlandıktan sonra yönlendirileceksiniz.
+      </p>
     </div>
   );
 }
