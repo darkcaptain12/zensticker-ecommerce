@@ -1,0 +1,237 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  AWAITING_PAYMENT
+  PAID
+  PREPARING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum BannerType {
+  IMAGE
+  VIDEO
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(CUSTOMER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  orders       Order[]
+
+  @@map("users")
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
+  campaigns   Campaign[]
+
+  @@map("categories")
+}
+
+model Product {
+  id                    String                    @id @default(cuid())
+  name                  String
+  slug                  String                    @unique
+  sku                   String?
+  description           String?                   @db.Text
+  price                 Float
+  salePrice             Float?
+  stock                 Int                       @default(0)
+  categoryId            String
+  category              Category                  @relation(fields: [categoryId], references: [id])
+  isActive              Boolean                   @default(true)
+  isCustomizable        Boolean                   @default(false)
+  campaignId            String?
+  campaign              Campaign?                 @relation(fields: [campaignId], references: [id])
+  images                ProductImage[]
+  orderItems            OrderItem[]
+  customOptions         CustomStickerOption?
+  campaignPackages      CampaignPackageProduct[]
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+
+  @@map("products")
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  altText   String?
+  isMain    Boolean  @default(false)
+  isVideo   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("product_images")
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  orderNumber     String      @unique
+  userId          String?
+  user            User?       @relation(fields: [userId], references: [id])
+  customerName    String
+  customerEmail   String
+  customerPhone   String
+  customerAddress String      @db.Text
+  shippingCode    String?
+  status          OrderStatus @default(PENDING)
+  totalAmount     Float
+  paymentProvider String?
+  paytrToken      String?
+  paytrRefCode    String?
+  notes           String?     @db.Text
+  items           OrderItem[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id         String  @id @default(cuid())
+  orderId    String
+  order      Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product @relation(fields: [productId], references: [id])
+  quantity   Int
+  unitPrice  Float
+  lineTotal  Float
+  customText String? @db.Text
+  customFont String?
+
+  @@map("order_items")
+}
+
+model CustomStickerOption {
+  id              String   @id @default(cuid())
+  productId       String   @unique
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  label           String   @default("İsim Stickerı")
+  availableFonts  Json     // Array of font names
+  maxCharacters   Int      @default(50)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("custom_sticker_options")
+}
+
+model Banner {
+  id        String     @id @default(cuid())
+  title     String     // Admin only, not displayed
+  type      BannerType @default(IMAGE)
+  filePath  String
+  linkUrl   String?
+  isActive  Boolean    @default(true)
+  position  Int        @default(0)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@map("banners")
+}
+
+model SiteSettings {
+  id                String   @id @default(cuid())
+  primaryColor      String   @default("#000000")
+  secondaryColor    String   @default("#ffffff")
+  headerLogoPath    String?
+  footerLogoPath    String?
+  whatsappPhoneNumber String @default("+905551234567")
+  headerMarqueeText String?  @default("200₺ üzeri ücretsiz kargo")
+  footerTexts       Json?    // { about: string, contact: string, etc }
+  seoMetaDefaults   Json?    // { title: string, description: string }
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("site_settings")
+}
+
+model Asset {
+  id        String   @id @default(cuid())
+  url       String   @unique
+  altText   String?
+  type      String   @default("IMAGE") // IMAGE or VIDEO
+  category  String?  // Optional category for organization
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("assets")
+}
+
+model Campaign {
+  id                String    @id @default(cuid())
+  title             String
+  description       String?   @db.Text
+  type              String    @default("GENERAL") // GENERAL, CATEGORY, PRODUCT, PACKAGE
+  discountPercent   Float?    // Yüzde indirim
+  discountAmount    Float?    // Sabit tutar indirimi
+  packagePrice      Float?    // Paket fiyatı (PACKAGE tipi için)
+  imageUrl          String?   // Paket görseli
+  minPurchaseAmount Float?    // Minimum alışveriş tutarı
+  startDate         DateTime
+  endDate           DateTime
+  isActive          Boolean   @default(true)
+  products          Product[]
+  categories        Category[]
+  packageProducts   CampaignPackageProduct[] // Paket ürünleri
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@map("campaigns")
+}
+
+model CampaignPackageProduct {
+  id         String   @id @default(cuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity   Int      @default(1)
+  createdAt  DateTime @default(now())
+
+  @@unique([campaignId, productId])
+  @@map("campaign_package_products")
+}
+
+model StaticPage {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  content     String   @db.Text
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("static_pages")
+}
+
