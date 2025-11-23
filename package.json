@@ -12,7 +12,8 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx scripts/seed.ts",
     "db:studio": "prisma studio",
-    "copy-assets": "tsx scripts/copy-assets.ts"
+    "copy-assets": "tsx scripts/copy-assets.ts",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^5.7.1",
@@ -53,4 +54,3 @@
     "typescript": "^5.3.3"
   }
 }
-
