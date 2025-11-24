@@ -129,33 +129,52 @@ export async function POST(req: NextRequest) {
       currency +
       test_mode
 
+    // PayTR hash calculation: HMAC-SHA256(hashStr + merchant_salt, merchant_key)
     const paytr_token = crypto
       .createHmac('sha256', merchant_key)
       .update(hashStr + merchant_salt)
       .digest('base64')
 
+    // Debug logging (remove in production)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('PayTR Hash Debug:', {
+        merchant_id,
+        user_ip,
+        merchant_oid,
+        email: customerEmail,
+        payment_amount,
+        user_basket_length: user_basket.length,
+        no_installment,
+        max_installment,
+        currency,
+        test_mode,
+        hashStr_length: hashStr.length,
+        paytr_token_length: paytr_token.length,
+      })
+    }
+
     // 8) PayTR'a POST isteği
-    const postData = new URLSearchParams({
-      merchant_id,
-      user_ip,
-      merchant_oid,
-      email: customerEmail,
-      payment_amount,
-      user_basket,
-      no_installment,
-      max_installment,
-      currency,
-      test_mode,
-      paytr_token,
-      user_name,
-      user_address,
-      user_phone,
-      merchant_ok_url,
-      merchant_fail_url,
-      timeout_limit,
-      debug_on,
-      lang,
-    })
+    // PayTR requires all values as strings
+    const postData = new URLSearchParams()
+    postData.append('merchant_id', merchant_id)
+    postData.append('user_ip', user_ip)
+    postData.append('merchant_oid', merchant_oid)
+    postData.append('email', customerEmail)
+    postData.append('payment_amount', payment_amount)
+    postData.append('user_basket', user_basket)
+    postData.append('no_installment', no_installment)
+    postData.append('max_installment', max_installment)
+    postData.append('currency', currency)
+    postData.append('test_mode', test_mode)
+    postData.append('paytr_token', paytr_token)
+    postData.append('user_name', user_name)
+    postData.append('user_address', user_address)
+    postData.append('user_phone', user_phone)
+    postData.append('merchant_ok_url', merchant_ok_url)
+    postData.append('merchant_fail_url', merchant_fail_url)
+    postData.append('timeout_limit', timeout_limit)
+    postData.append('debug_on', debug_on)
+    postData.append('lang', lang)
 
     const response = await fetch('https://www.paytr.com/odeme/api/get-token', {
       method: 'POST',
@@ -168,7 +187,15 @@ export async function POST(req: NextRequest) {
     const result = await response.json()
 
     if (result.status !== 'success') {
-      console.error('PayTR get-token error:', result)
+      console.error('PayTR get-token error:', {
+        status: result.status,
+        reason: result.reason,
+        merchant_id,
+        merchant_oid,
+        payment_amount,
+        user_basket_preview: user_basket.substring(0, 50) + '...',
+        hashStr_preview: hashStr.substring(0, 100) + '...',
+      })
       
       // Delete the order if payment initialization failed
       await prisma.order.delete({
