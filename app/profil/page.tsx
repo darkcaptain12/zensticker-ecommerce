@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { formatPrice } from '@/lib/utils'
+import { Truck } from 'lucide-react'
 
 export default async function ProfilePage() {
   const session = await getServerSession(authOptions)
@@ -100,11 +101,21 @@ export default async function ProfilePage() {
                           {order.items.length} ürün
                         </p>
                       </div>
-                      <Link href={`/siparis-tesekkur/${order.orderNumber}`}>
-                        <Button variant="outline" size="sm" className="mt-2">
-                          Detayları Gör
-                        </Button>
-                      </Link>
+                      <div className="flex gap-2 mt-3">
+                        <Link href={`/siparis-tesekkur/${order.orderNumber}`}>
+                          <Button variant="outline" size="sm">
+                            Detayları Gör
+                          </Button>
+                        </Link>
+                        {order.cargoTrackingNo && (
+                          <Link href={`/kargo-takip?trackingNumber=${order.cargoTrackingNo}`}>
+                            <Button variant="default" size="sm">
+                              <Truck className="h-4 w-4 mr-2" />
+                              Kargoyu Takip Et
+                            </Button>
+                          </Link>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>

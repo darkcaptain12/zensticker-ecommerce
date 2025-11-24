@@ -10,7 +10,7 @@ import { Trash2, Plus, Minus, ShoppingBag } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 
 export default function CartPage() {
-  const { items, updateQuantity, removeItem, total, clearCart } = useCart()
+  const { items, updateQuantity, removeItem, total, clearCart, campaignDiscount, subtotal, finalTotal } = useCart()
 
   if (items.length === 0) {
     return (
@@ -113,16 +113,25 @@ export default function CartPage() {
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between">
                   <span>Ara Toplam</span>
-                  <span>{formatPrice(total)}</span>
+                  <span>{formatPrice(subtotal)}</span>
                 </div>
+                {campaignDiscount && (
+                  <div className="flex justify-between text-green-600">
+                    <span>
+                      🎉 Kampanya İndirimi ({campaignDiscount.title})
+                      {campaignDiscount.discountPercent && ` %${campaignDiscount.discountPercent}`}
+                    </span>
+                    <span>-{formatPrice(campaignDiscount.calculatedDiscount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span>Kargo</span>
-                  <span>{total >= 200 ? 'Ücretsiz' : '25₺'}</span>
+                  <span>{finalTotal >= 200 ? 'Ücretsiz' : '25₺'}</span>
                 </div>
                 <div className="border-t pt-2 mt-2">
                   <div className="flex justify-between font-bold text-lg">
                     <span>Toplam</span>
-                    <span>{formatPrice(total + (total >= 200 ? 0 : 25))}</span>
+                    <span>{formatPrice(finalTotal + (finalTotal >= 200 ? 0 : 25))}</span>
                   </div>
                 </div>
               </div>

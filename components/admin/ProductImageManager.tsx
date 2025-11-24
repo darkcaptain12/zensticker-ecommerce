@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Card, CardContent } from '@/components/ui/card'
-import { X, Star, Image as ImageIcon, Video } from 'lucide-react'
+import { X, Star, Image as ImageIcon, Video, Upload, Loader2 } from 'lucide-react'
 import Image from 'next/image'
 
 interface ProductImage {
@@ -41,17 +41,30 @@ export function ProductImageManager({
   const [availableImages, setAvailableImages] = useState<string[]>([])
   const [savedAssets, setSavedAssets] = useState<Array<{ url: string; altText?: string | null }>>([])
   const [loadingImages, setLoadingImages] = useState(false)
-  const [imageSelectionMode, setImageSelectionMode] = useState<'select' | 'manual' | 'saved'>('select')
+  const [imageSelectionMode, setImageSelectionMode] = useState<'select' | 'manual' | 'saved' | 'upload'>('upload')
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const initialImagesRef = useRef<string>('')
+  const isInitialMount = useRef(true)
 
+  // Only update images when initialImages actually changes (prevent infinite loops)
   useEffect(() => {
-    setImages(initialImages)
-  }, [initialImages])
-
-  useEffect(() => {
-    if (onImagesChange) {
-      onImagesChange(images)
+    const initialImagesStr = JSON.stringify(initialImages)
+    
+    // On initial mount, set images
+    if (isInitialMount.current) {
+      setImages(initialImages)
+      initialImagesRef.current = initialImagesStr
+      isInitialMount.current = false
+      return
     }
-  }, [images, onImagesChange])
+    
+    // Only update if initialImages actually changed
+    if (initialImagesStr !== initialImagesRef.current) {
+      setImages(initialImages)
+      initialImagesRef.current = initialImagesStr
+    }
+  }, [initialImages])
 
   useEffect(() => {
     // Load available images from API
@@ -73,9 +86,19 @@ export function ProductImageManager({
   }, [])
 
   const addImage = async () => {
-    if (!newImageUrl.trim()) return
+    if (!newImageUrl.trim()) {
+      alert('Lütfen bir görsel URL\'si girin veya dosya seçin')
+      return
+    }
 
     const imageUrl = newImageUrl.trim()
+
+    // Check if image already exists
+    if (images.some(img => img.url === imageUrl)) {
+      alert('Bu görsel zaten eklenmiş')
+      setNewImageUrl('')
+      return
+    }
 
     // Save to database for future use
     try {
@@ -137,6 +160,111 @@ export function ProductImageManager({
     if (onImagesChange) {
       onImagesChange(newImages)
     }
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    setUploadProgress(0)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('folder', 'products')
+
+      // Simulate progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => {
+          if (prev >= 90) {
+            clearInterval(progressInterval)
+            return 90
+          }
+          return prev + 10
+        })
+      }, 200)
+
+      const response = await fetch('/api/admin/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      clearInterval(progressInterval)
+      setUploadProgress(100)
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Yükleme başarısız')
+      }
+
+      const data = await response.json()
+      
+      // Set the uploaded file URL
+      setNewImageUrl(data.url)
+      
+      // Auto-detect if it's a video
+      const isVideoFile = file.type.startsWith('video/')
+      setIsVideo(isVideoFile)
+
+      // Auto-add the image after upload
+      setTimeout(() => {
+        addImageFromUpload(data.url, isVideoFile)
+      }, 500)
+
+    } catch (error: any) {
+      console.error('Upload error:', error)
+      alert(error.message || 'Dosya yüklenirken bir hata oluştu')
+    } finally {
+      setUploading(false)
+      setUploadProgress(0)
+      // Reset file input
+      if (e.target) {
+        e.target.value = ''
+      }
+    }
+  }
+
+  const addImageFromUpload = async (imageUrl: string, isVideoFile: boolean) => {
+    // Check if already exists
+    if (images.some(img => img.url === imageUrl)) {
+      alert('Bu görsel zaten eklenmiş')
+      return
+    }
+
+    // Save to database for future use
+    try {
+      await fetch('/api/admin/assets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: imageUrl,
+          altText: newImageAlt.trim() || null,
+          type: isVideoFile ? 'VIDEO' : 'IMAGE',
+        }),
+      })
+    } catch (error) {
+      console.error('Failed to save asset to database:', error)
+    }
+
+    const newImage: ProductImage = {
+      url: imageUrl,
+      altText: newImageAlt.trim() || null,
+      isMain: images.length === 0,
+      isVideo: isVideoFile,
+    }
+
+    const updatedImages = [...images, newImage]
+    setImages(updatedImages)
+    
+    // Immediately notify parent component
+    if (onImagesChange) {
+      onImagesChange(updatedImages)
+    }
+    
+    setNewImageUrl('')
+    setNewImageAlt('')
+    setIsVideo(false)
   }
 
   return (
@@ -235,6 +363,19 @@ export function ProductImageManager({
                 <input
                   type="radio"
                   name="imageMode"
+                  checked={imageSelectionMode === 'upload'}
+                  onChange={() => {
+                    setImageSelectionMode('upload')
+                    setNewImageUrl('')
+                  }}
+                  className="h-4 w-4"
+                />
+                <span>PC'den Yükle</span>
+              </label>
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="imageMode"
                   checked={imageSelectionMode === 'manual'}
                   onChange={() => {
                     setImageSelectionMode('manual')
@@ -247,6 +388,55 @@ export function ProductImageManager({
             </div>
           </div>
 
+          {/* File Upload */}
+          {imageSelectionMode === 'upload' && (
+            <div>
+              <Label htmlFor="fileUpload">Dosya Yükle (Görsel veya Video) *</Label>
+              <div className="mt-2">
+                <input
+                  type="file"
+                  id="fileUpload"
+                  accept="image/*,video/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    const input = document.getElementById('fileUpload') as HTMLInputElement
+                    input?.click()
+                  }}
+                  disabled={uploading}
+                  className="w-full"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Yükleniyor... {uploadProgress}%
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Dosya Seç ve Yükle
+                    </>
+                  )}
+                </Button>
+                {uploadProgress > 0 && uploadProgress < 100 && (
+                  <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-primary h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                )}
+                <p className="text-xs text-gray-500 mt-2">
+                  Desteklenen formatlar: JPG, PNG, GIF, WEBP (max 10MB) veya MP4, WEBM, OGG (video)
+                </p>
+              </div>
+            </div>
+          )}
+
           {imageSelectionMode === 'select' && (
             <div>
               <Label htmlFor="imageSelect">
@@ -256,6 +446,31 @@ export function ProductImageManager({
                 value={newImageUrl}
                 onValueChange={(value) => {
                   setNewImageUrl(value)
+                  // Auto-add when image is selected
+                  if (value) {
+                    // Check if already exists
+                    if (images.some(img => img.url === value)) {
+                      alert('Bu görsel zaten eklenmiş')
+                      setNewImageUrl('')
+                      return
+                    }
+                    setTimeout(() => {
+                      const selectedImage = value
+                      const newImage: ProductImage = {
+                        url: selectedImage,
+                        altText: newImageAlt.trim() || null,
+                        isMain: images.length === 0,
+                        isVideo: false,
+                      }
+                      const updatedImages = [...images, newImage]
+                      setImages(updatedImages)
+                      if (onImagesChange) {
+                        onImagesChange(updatedImages)
+                      }
+                      setNewImageUrl('')
+                      setNewImageAlt('')
+                    }, 100)
+                  }
                 }}
               >
                 <SelectTrigger>
@@ -315,6 +530,30 @@ export function ProductImageManager({
                   const selected = savedAssets.find(a => a.url === value)
                   if (selected?.altText) {
                     setNewImageAlt(selected.altText)
+                  }
+                  // Auto-add when image is selected
+                  if (value) {
+                    // Check if already exists
+                    if (images.some(img => img.url === value)) {
+                      alert('Bu görsel zaten eklenmiş')
+                      setNewImageUrl('')
+                      return
+                    }
+                    setTimeout(() => {
+                      const newImage: ProductImage = {
+                        url: value,
+                        altText: selected?.altText || newImageAlt.trim() || null,
+                        isMain: images.length === 0,
+                        isVideo: false,
+                      }
+                      const updatedImages = [...images, newImage]
+                      setImages(updatedImages)
+                      if (onImagesChange) {
+                        onImagesChange(updatedImages)
+                      }
+                      setNewImageUrl('')
+                      setNewImageAlt('')
+                    }, 100)
                   }
                 }}
               >
@@ -432,24 +671,26 @@ export function ProductImageManager({
               </p>
             </div>
           )}
-          <Button 
-            type="button" 
-            onClick={addImage} 
-            variant="outline"
-            disabled={!newImageUrl.trim()}
-          >
-            {isVideo ? (
-              <>
-                <Video className="h-4 w-4 mr-2" />
-                Video Ekle
-              </>
-            ) : (
-              <>
-                <ImageIcon className="h-4 w-4 mr-2" />
-                Görsel Ekle
-              </>
-            )}
-          </Button>
+          {imageSelectionMode !== 'upload' && (
+            <Button 
+              type="button" 
+              onClick={addImage} 
+              variant="outline"
+              disabled={!newImageUrl.trim()}
+            >
+              {isVideo ? (
+                <>
+                  <Video className="h-4 w-4 mr-2" />
+                  Video Ekle
+                </>
+              ) : (
+                <>
+                  <ImageIcon className="h-4 w-4 mr-2" />
+                  Görsel Ekle
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

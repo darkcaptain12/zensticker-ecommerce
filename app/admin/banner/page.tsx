@@ -12,9 +12,9 @@ export default async function AdminBannersPage() {
   })
 
   return (
-    <div>
+    <div className="p-4 md:p-6">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Bannerlar</h1>
+        <h1 className="text-3xl font-bold text-foreground">Bannerlar</h1>
         <Link href="/admin/banner/yeni">
           <Button>
             <Plus className="h-4 w-4 mr-2" />
@@ -28,22 +28,30 @@ export default async function AdminBannersPage() {
           <Card key={banner.id}>
             <CardContent className="p-4">
               <div className="relative w-full h-48 mb-4">
-                <Image
-                  src={banner.filePath}
-                  alt={banner.title}
-                  fill
-                  className="object-cover rounded"
-                />
+                {banner.type === 'VIDEO' ? (
+                  <video
+                    src={banner.filePath}
+                    className="w-full h-full object-cover rounded"
+                    controls
+                  />
+                ) : (
+                  <Image
+                    src={banner.filePath}
+                    alt={banner.title}
+                    fill
+                    className="object-cover rounded"
+                  />
+                )}
               </div>
-              <h3 className="font-semibold mb-2">{banner.title}</h3>
-              <p className="text-sm text-gray-600 mb-2">
+              <h3 className="font-semibold mb-2 text-foreground">{banner.title}</h3>
+              <p className="text-sm text-muted-foreground mb-2">
                 Tip: {banner.type} | Pozisyon: {banner.position}
               </p>
               {banner.linkUrl && (
-                <p className="text-sm text-gray-600 mb-2">Link: {banner.linkUrl}</p>
+                <p className="text-sm text-muted-foreground mb-2">Link: {banner.linkUrl}</p>
               )}
               <p className="text-sm mb-4">
-                <span className={banner.isActive ? 'text-green-600' : 'text-red-600'}>
+                <span className={banner.isActive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
                   {banner.isActive ? 'Aktif' : 'Pasif'}
                 </span>
               </p>

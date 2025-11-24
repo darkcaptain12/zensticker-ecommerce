@@ -14,7 +14,7 @@ import { useRouter } from 'next/navigation'
 
 export default function CheckoutPage() {
   const { data: session } = useSession()
-  const { items, total, clearCart } = useCart()
+  const { items, total, clearCart, campaignDiscount, subtotal, finalTotal } = useCart()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
@@ -41,17 +41,21 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           ...formData,
           items,
-          total: total + (total >= 200 ? 0 : 25),
+          total: finalTotal + (finalTotal >= 200 ? 0 : 25),
+          campaignDiscount: campaignDiscount ? {
+            id: campaignDiscount.id,
+            discountAmount: campaignDiscount.calculatedDiscount,
+          } : null,
         }),
       })
 
       const data = await response.json()
 
-      if (data.success && data.token) {
+      if (data.status === 'ok' && data.token) {
         // Redirect to PayTR iframe
         window.location.href = `/odeme/paytr?token=${data.token}&orderNumber=${data.orderNumber}`
       } else {
-        alert(data.error || 'Ödeme başlatılamadı')
+        alert(data.message || data.error || 'Ödeme başlatılamadı')
         setLoading(false)
       }
     } catch (error) {
@@ -165,16 +169,25 @@ export default function CheckoutPage() {
                 <div className="border-t pt-4 mt-4 space-y-2">
                   <div className="flex justify-between">
                     <span>Ara Toplam</span>
-                    <span>{formatPrice(total)}</span>
+                    <span>{formatPrice(subtotal)}</span>
                   </div>
+                  {campaignDiscount && (
+                    <div className="flex justify-between text-green-600">
+                      <span>
+                        🎉 Kampanya İndirimi ({campaignDiscount.title})
+                        {campaignDiscount.discountPercent && ` %${campaignDiscount.discountPercent}`}
+                      </span>
+                      <span>-{formatPrice(campaignDiscount.calculatedDiscount)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span>Kargo</span>
-                    <span>{total >= 200 ? 'Ücretsiz' : '25₺'}</span>
+                    <span>{finalTotal >= 200 ? 'Ücretsiz' : '25₺'}</span>
                   </div>
                   <div className="border-t pt-2">
                     <div className="flex justify-between font-bold text-lg">
                       <span>Toplam</span>
-                      <span>{formatPrice(total + (total >= 200 ? 0 : 25))}</span>
+                      <span>{formatPrice(finalTotal + (finalTotal >= 200 ? 0 : 25))}</span>
                     </div>
                   </div>
                 </div>

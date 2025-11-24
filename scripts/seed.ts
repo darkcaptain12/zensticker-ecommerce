@@ -219,20 +219,13 @@ async function main() {
 
         // Create custom sticker options for customizable products
         if (isCustomizable) {
+          const fontsModule = await import('../lib/fonts')
+          const AVAILABLE_FONTS = fontsModule.AVAILABLE_FONTS
           await prisma.customStickerOption.create({
             data: {
               productId: product.id,
               label: 'İsim Stickerı',
-              availableFonts: [
-                'Arial',
-                'Helvetica',
-                'Times New Roman',
-                'Courier New',
-                'Verdana',
-                'Georgia',
-                'Comic Sans MS',
-                'Impact',
-              ],
+              availableFonts: AVAILABLE_FONTS,
               maxCharacters: 50,
             },
           })
@@ -284,7 +277,7 @@ async function main() {
         <p>WhatsApp üzerinden 7/24 destek alabilirsiniz. Sağ alt köşedeki WhatsApp butonuna tıklayarak bize ulaşabilirsiniz.</p>
         <h3>Adres</h3>
         <p>Zen Sticker E-Ticaret<br />
-        İstanbul, Türkiye</p>
+        Bursa, Türkiye</p>
       `,
     },
     {

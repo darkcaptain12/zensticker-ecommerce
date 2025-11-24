@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -52,7 +52,21 @@ export function ProductForm({ product, categories, campaigns = [] }: ProductForm
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const productImages = (product as any)?.images || []
-  const [images, setImages] = useState<any[]>(productImages)
+  
+  // Initialize images from product - only once on mount
+  const getInitialImages = () => {
+    if (productImages && productImages.length > 0) {
+      return productImages.map((img: any) => ({
+        url: img.url,
+        altText: img.altText || null,
+        isMain: img.isMain || false,
+        isVideo: img.isVideo || false,
+      }))
+    }
+    return []
+  }
+  
+  const [images, setImages] = useState<any[]>(getInitialImages())
   const [formData, setFormData] = useState({
     name: product?.name || '',
     slug: product?.slug || '',
@@ -77,8 +91,13 @@ export function ProductForm({ product, categories, campaigns = [] }: ProductForm
         : '/api/admin/products'
       const method = product?.id ? 'PATCH' : 'POST'
 
-      // Debug: Log images before sending
-      console.log('Sending images to API:', images)
+      // Ensure images array is properly formatted
+      const formattedImages = images.map((img: any) => ({
+        url: img.url || '',
+        altText: img.altText || null,
+        isMain: img.isMain || false,
+        isVideo: img.isVideo || false,
+      }))
 
       const response = await fetch(url, {
         method,
@@ -86,7 +105,7 @@ export function ProductForm({ product, categories, campaigns = [] }: ProductForm
         body: JSON.stringify({
           ...formData,
           salePrice: formData.salePrice ? parseFloat(formData.salePrice.toString()) : null,
-          images: images,
+          images: formattedImages,
         }),
       })
 
@@ -257,8 +276,15 @@ export function ProductForm({ product, categories, campaigns = [] }: ProductForm
 
       <ProductImageManager
         productId={product?.id}
-        initialImages={productImages}
-        onImagesChange={setImages}
+        initialImages={productImages.map((img: any) => ({
+          url: img.url,
+          altText: img.altText || null,
+          isMain: img.isMain || false,
+          isVideo: img.isVideo || false,
+        }))}
+        onImagesChange={(newImages: any[]) => {
+          setImages(newImages)
+        }}
       />
 
       <Card>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { AVAILABLE_FONTS } from '@/lib/fonts'
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -45,16 +46,7 @@ export async function POST(request: NextRequest) {
         create: {
           productId: product.id,
           label: 'İsim Stickerı',
-          availableFonts: [
-            'Arial',
-            'Helvetica',
-            'Times New Roman',
-            'Courier New',
-            'Verdana',
-            'Georgia',
-            'Comic Sans MS',
-            'Impact',
-          ],
+          availableFonts: AVAILABLE_FONTS,
           maxCharacters: 50,
         },
       })

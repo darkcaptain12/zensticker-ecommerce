@@ -22,14 +22,22 @@ export default async function CampaignsPage() {
     include: {
       categories: true,
       products: {
-        include: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          price: true,
           images: { where: { isMain: true }, take: 1 },
         },
       },
       packageProducts: {
         include: {
           product: {
-            include: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              price: true,
               images: { where: { isMain: true }, take: 1 },
             },
           },
@@ -63,18 +71,19 @@ export default async function CampaignsPage() {
             }
 
             return (
-              <Card key={campaign.id} className="hover:shadow-lg transition cursor-pointer h-full flex flex-col">
-                {campaign.imageUrl && (
-                  <div className="relative w-full h-48">
-                    <Image
-                      src={campaign.imageUrl}
-                      alt={campaign.title}
-                      fill
-                      className="object-cover rounded-t-lg"
-                    />
-                  </div>
-                )}
-                <CardContent className="p-6 flex-1 flex flex-col">
+              <Link href={`/kampanya/${campaign.id}`}>
+                <Card key={campaign.id} className="hover:shadow-lg transition cursor-pointer h-full flex flex-col">
+                  {campaign.imageUrl && (
+                    <div className="relative w-full h-48">
+                      <Image
+                        src={campaign.imageUrl}
+                        alt={campaign.title}
+                        fill
+                        className="object-cover rounded-t-lg"
+                      />
+                    </div>
+                  )}
+                  <CardContent className="p-6 flex-1 flex flex-col">
                   <div className="mb-4">
                     <div className="flex items-center gap-2 mb-2">
                       <h2 className="text-xl font-semibold">{campaign.title}</h2>
@@ -154,6 +163,7 @@ export default async function CampaignsPage() {
                   </div>
                 </CardContent>
               </Card>
+              </Link>
             )
           })}
         </div>

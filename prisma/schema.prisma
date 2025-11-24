@@ -111,7 +111,14 @@ model Order {
   paytrToken      String?
   paytrRefCode    String?
   notes           String?     @db.Text
+  campaignId      String?
+  campaign        Campaign?   @relation(fields: [campaignId], references: [id])
   items           OrderItem[]
+  cargoCompany    String?
+  cargoTrackingNo String?
+  shipmentStatus  String?
+  shipmentLabelUrl String?
+  shipmentLastSync DateTime?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
@@ -168,6 +175,7 @@ model SiteSettings {
   footerLogoPath    String?
   whatsappPhoneNumber String @default("+905551234567")
   headerMarqueeText String?  @default("200₺ üzeri ücretsiz kargo")
+  videoBackgroundUrl String? // Video Background Section için video URL
   footerTexts       Json?    // { about: string, contact: string, etc }
   seoMetaDefaults   Json?    // { title: string, description: string }
   createdAt         DateTime @default(now())
@@ -204,6 +212,7 @@ model Campaign {
   products          Product[]
   categories        Category[]
   packageProducts   CampaignPackageProduct[] // Paket ürünleri
+  orders            Order[]   // Orders that used this campaign
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -228,6 +237,7 @@ model StaticPage {
   slug        String   @unique
   title       String
   content     String   @db.Text
+  imageUrl    String?  // Sayfaya özel görsel
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

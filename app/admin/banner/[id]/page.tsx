@@ -19,8 +19,8 @@ export default async function EditBannerPage({
   }
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-8">Banner Düzenle</h1>
+    <div className="p-4 md:p-6">
+      <h1 className="text-3xl font-bold mb-8 text-foreground">Banner Düzenle</h1>
       <BannerForm banner={banner} availableBanners={availableBanners} />
     </div>
   )

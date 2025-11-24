@@ -15,6 +15,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { ShoppingCart, CreditCard } from 'lucide-react'
 import { useCart } from '@/lib/cart-context'
 import { useRouter } from 'next/navigation'
+import { useToast } from '@/hooks/use-toast'
 
 interface Product {
   id: string
@@ -34,6 +35,7 @@ interface Product {
 export function ProductDetailClient({ product }: { product: Product }) {
   const { addItem } = useCart()
   const router = useRouter()
+  const { toast } = useToast()
   const [quantity, setQuantity] = useState(1)
   const [customText, setCustomText] = useState('')
   const [selectedFont, setSelectedFont] = useState(
@@ -43,7 +45,20 @@ export function ProductDetailClient({ product }: { product: Product }) {
 
   const handleAddToCart = () => {
     if (product.stock < quantity) {
-      alert('Yeterli stok bulunmamaktadır')
+      toast({
+        variant: 'destructive',
+        title: 'Stok Yetersiz',
+        description: 'Yeterli stok bulunmamaktadır',
+      })
+      return
+    }
+
+    if (product.isCustomizable && !customText.trim()) {
+      toast({
+        variant: 'destructive',
+        title: 'Metin Gerekli',
+        description: 'Lütfen özelleştirme metnini giriniz',
+      })
       return
     }
 
@@ -61,29 +76,53 @@ export function ProductDetailClient({ product }: { product: Product }) {
       customFont: product.isCustomizable ? selectedFont : undefined,
     })
 
+    toast({
+      title: 'Sepete Eklendi',
+      description: `${product.name} sepete eklendi`,
+    })
+
     setTimeout(() => {
       setAdding(false)
       router.push('/sepet')
-    }, 300)
+    }, 500)
   }
 
   const handleBuyNow = () => {
+    if (product.stock < quantity) {
+      toast({
+        variant: 'destructive',
+        title: 'Stok Yetersiz',
+        description: 'Yeterli stok bulunmamaktadır',
+      })
+      return
+    }
+
+    if (product.isCustomizable && !customText.trim()) {
+      toast({
+        variant: 'destructive',
+        title: 'Metin Gerekli',
+        description: 'Lütfen özelleştirme metnini giriniz',
+      })
+      return
+    }
+
     handleAddToCart()
     setTimeout(() => {
       router.push('/odeme')
-    }, 500)
+    }, 700)
   }
 
   return (
     <div className="space-y-6">
       {/* Quantity Selector */}
       <div>
-        <Label htmlFor="quantity">Adet</Label>
+        <Label htmlFor="quantity" className="text-foreground">Adet</Label>
         <div className="flex items-center gap-2 mt-2">
           <Button
             variant="outline"
             size="icon"
             onClick={() => setQuantity(Math.max(1, quantity - 1))}
+            className="border-border dark:border-dark-border text-foreground hover:bg-primary/20 hover:border-primary hover:text-primary"
           >
             -
           </Button>
@@ -94,12 +133,13 @@ export function ProductDetailClient({ product }: { product: Product }) {
             max={product.stock}
             value={quantity}
             onChange={(e) => setQuantity(Math.max(1, Math.min(product.stock, parseInt(e.target.value) || 1)))}
-            className="w-20 text-center"
+            className="w-20 text-center bg-background dark:bg-dark-soft border-border dark:border-dark-border text-foreground focus:border-primary focus:ring-primary"
           />
           <Button
             variant="outline"
             size="icon"
             onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+            className="border-border dark:border-dark-border text-foreground hover:bg-primary/20 hover:border-primary hover:text-primary"
           >
             +
           </Button>
@@ -108,9 +148,9 @@ export function ProductDetailClient({ product }: { product: Product }) {
 
       {/* Custom Sticker Options */}
       {product.isCustomizable && product.customOptions && product.customOptions.availableFonts && (
-        <Card>
+        <Card className="border border-border dark:border-dark-border bg-card dark:bg-dark-card/50 backdrop-blur-sm rounded-2xl">
           <CardContent className="pt-6">
-            <Label htmlFor="customText">{product.customOptions.label}</Label>
+            <Label htmlFor="customText" className="text-foreground">{product.customOptions.label}</Label>
             <Input
               id="customText"
               value={customText}
@@ -121,23 +161,23 @@ export function ProductDetailClient({ product }: { product: Product }) {
                 }
               }}
               placeholder="Sticker üzerinde yazacak metin"
-              className="mt-2"
+              className="mt-2 bg-background dark:bg-dark-soft border-border dark:border-dark-border text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-primary"
               maxLength={product.customOptions.maxCharacters}
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               {customText.length} / {product.customOptions.maxCharacters} karakter
             </p>
 
             <div className="mt-4">
-              <Label htmlFor="font">Font Seçimi</Label>
+              <Label htmlFor="font" className="text-foreground">Font Seçimi</Label>
               <Select value={selectedFont} onValueChange={setSelectedFont}>
-                <SelectTrigger className="mt-2">
+                <SelectTrigger className="mt-2 bg-background dark:bg-dark-soft border-border dark:border-dark-border text-foreground focus:border-primary focus:ring-primary">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-card dark:bg-dark-card border-border dark:border-dark-border max-h-[300px]">
                   {product.customOptions.availableFonts.map((font) => (
-                    <SelectItem key={font} value={font}>
-                      {font}
+                    <SelectItem key={font} value={font} className="text-foreground hover:bg-primary/20 focus:bg-primary/20">
+                      <span style={{ fontFamily: font }}>{font}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -146,10 +186,10 @@ export function ProductDetailClient({ product }: { product: Product }) {
 
             {/* Live Preview */}
             {customText && (
-              <div className="mt-4 p-4 border rounded-lg bg-gray-50">
-                <p className="text-sm text-gray-600 mb-2">Önizleme:</p>
+              <div className="mt-4 p-4 border border-primary/30 rounded-xl bg-card/50 dark:bg-dark-card/50 backdrop-blur-sm">
+                <p className="text-sm text-primary mb-2 font-semibold">Önizleme:</p>
                 <div
-                  className="text-2xl font-bold text-center p-4 bg-white rounded border"
+                  className="text-2xl font-bold text-center p-4 bg-background dark:bg-dark-soft rounded-lg border border-primary/20 text-foreground"
                   style={{ fontFamily: selectedFont }}
                 >
                   {customText || 'Metin giriniz...'}
@@ -161,11 +201,11 @@ export function ProductDetailClient({ product }: { product: Product }) {
       )}
 
       {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row gap-4 sticky bottom-0 bg-white p-4 -mx-4 border-t sm:relative sm:border-0 sm:p-0">
+      <div className="flex flex-col sm:flex-row gap-4 sticky bottom-0 bg-card/95 dark:bg-dark-card/95 backdrop-blur-md p-4 -mx-4 border-t border-border dark:border-primary/20 sm:relative sm:border-0 sm:p-0 sm:bg-transparent">
         <Button
           onClick={handleAddToCart}
           disabled={adding || product.stock === 0}
-          className="flex-1"
+          className="flex-1 bg-gradient-to-r from-primary to-primary-light hover:from-primary-light hover:to-primary text-primary-foreground font-bold shadow-sm dark:shadow-neon-sm hover:shadow-md dark:hover:shadow-neon transition-all"
           size="lg"
         >
           <ShoppingCart className="h-5 w-5 mr-2" />
@@ -175,7 +215,7 @@ export function ProductDetailClient({ product }: { product: Product }) {
           onClick={handleBuyNow}
           disabled={adding || product.stock === 0}
           variant="default"
-          className="flex-1"
+          className="flex-1 bg-gradient-to-r from-accent to-accent-light hover:from-accent-light hover:to-accent text-white font-bold shadow-sm dark:shadow-neon-pink hover:shadow-md dark:hover:shadow-neon-pink transition-all"
           size="lg"
         >
           <CreditCard className="h-5 w-5 mr-2" />

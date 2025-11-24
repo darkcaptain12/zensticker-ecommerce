@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
         slug: data.slug,
         title: data.title,
         content: data.content,
+        imageUrl: data.imageUrl || null,
         isActive: data.isActive ?? true,
       },
     })

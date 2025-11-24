@@ -1,0 +1,634 @@
+[
+  {
+    "id": "TC001",
+    "title": "Public Storefront Browsing",
+    "description": "Verify that users can browse product categories and view product listings correctly on the public storefront across devices.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to the home page"
+      },
+      {
+        "type": "action",
+        "description": "Click on various product categories"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify products are displayed correctly under each category"
+      },
+      {
+        "type": "action",
+        "description": "Check UI responsiveness on desktop, tablet, and mobile"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm layout and product listings adapt correctly without visual glitches"
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "Product Detail and Customization",
+    "description": "Verify that the product detail page displays correct information and customization options work as intended.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to a product detail page"
+      },
+      {
+        "type": "assertion",
+        "description": "Check product images, description, price, and customization options are visible"
+      },
+      {
+        "type": "action",
+        "description": "Select sticker customization options including fonts and input text"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify live preview updates accordingly with correct character counting"
+      },
+      {
+        "type": "action",
+        "description": "Attempt valid and invalid inputs in customization fields"
+      },
+      {
+        "type": "assertion",
+        "description": "Validate input restrictions and error messages are displayed properly"
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Add to Cart and Quantity Update",
+    "description": "Test adding products to the cart, updating quantities, and removing items with correct discount application.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Add multiple products including customized stickers to the cart"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm products appear in the cart with correct details and price"
+      },
+      {
+        "type": "action",
+        "description": "Update quantity for items in the cart"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify updated prices reflect quantity changes accurately"
+      },
+      {
+        "type": "action",
+        "description": "Remove an item from the cart"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm item is removed and cart totals update correctly"
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Campaign Discount Calculations",
+    "description": "Validate that campaign discounts (percentage, fixed, category-specific, product-specific, package) calculate accurately and apply correctly to products and cart totals.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Create test campaigns in admin panel with all discount types"
+      },
+      {
+        "type": "action",
+        "description": "Apply campaigns to eligible products and add to cart"
+      },
+      {
+        "type": "assertion",
+        "description": "Check product prices and cart totals reflect discounts precisely"
+      },
+      {
+        "type": "action",
+        "description": "Add products not included in campaigns"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no discount is applied to excluded products"
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "User Registration and Login",
+    "description": "Ensure that user registration and login flows function correctly with input validation and session management.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to registration page"
+      },
+      {
+        "type": "action",
+        "description": "Submit registration with valid data"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm successful registration and automatic login or confirmation message"
+      },
+      {
+        "type": "action",
+        "description": "Attempt registration with missing or invalid fields"
+      },
+      {
+        "type": "assertion",
+        "description": "Validate error messages for required fields and invalid inputs"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to login page"
+      },
+      {
+        "type": "action",
+        "description": "Attempt login with correct credentials"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify login success and user profile access"
+      },
+      {
+        "type": "action",
+        "description": "Attempt login with incorrect credentials"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm login failure and appropriate error message"
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "User Profile Management",
+    "description": "Test user profile update functionality including validation and persistence.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Log in as a registered user"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to profile page"
+      },
+      {
+        "type": "action",
+        "description": "Update profile details including name, email, and password"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm validation messages appear for invalid inputs"
+      },
+      {
+        "type": "action",
+        "description": "Submit valid updates"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify changes persist and reflect correctly on reload"
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Secure Checkout with PayTR Test Mode",
+    "description": "Validate the complete checkout process using PayTR payment gateway in test mode, ensuring no real transactions occur and proper handling of success and failure scenarios.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Add products to cart and proceed to checkout"
+      },
+      {
+        "type": "action",
+        "description": "Fill in shipping and payment details"
+      },
+      {
+        "type": "action",
+        "description": "Initiate payment using PayTR in test mode"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm payment processing in test mode with no real money charged"
+      },
+      {
+        "type": "action",
+        "description": "Simulate successful payment callback"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify order status updates to successful and confirmation page is shown"
+      },
+      {
+        "type": "action",
+        "description": "Simulate failed payment callback"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm appropriate error message and no order confirmation"
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Admin Panel CRUD Operations",
+    "description": "Verify full CRUD functionality for products, categories, campaigns, banners, static pages, orders, users, and site settings in the admin panel.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login to admin panel"
+      },
+      {
+        "type": "action",
+        "description": "Create new entries for each resource type (product, category, campaign, banner, static page, user)"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify new entries appear correctly with accurate data"
+      },
+      {
+        "type": "action",
+        "description": "Edit existing entries and save changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm updates persist and display correctly"
+      },
+      {
+        "type": "action",
+        "description": "Delete entries"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify entries are removed from the system and UI"
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Order Tracking and Status Updates",
+    "description": "Validate order tracking page functionality and order status update mechanisms for both customers and admins.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as customer and navigate to order history"
+      },
+      {
+        "type": "action",
+        "description": "View detailed order tracking information"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify order statuses and shipment tracking details are accurate and up to date"
+      },
+      {
+        "type": "action",
+        "description": "Login as admin and update order statuses"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm updated statuses reflect correctly on customer view"
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Form Validations on All User Inputs",
+    "description": "Ensure client-side and server-side validations are correctly implemented for all forms including registration, login, checkout, product customization and admin CRUD forms.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt form submissions with missing required fields"
+      },
+      {
+        "type": "assertion",
+        "description": "Validate error messages appear for missing inputs"
+      },
+      {
+        "type": "action",
+        "description": "Enter incorrectly formatted data (e.g., invalid email, phone number, password rules)"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm validation errors appear and prevent submission"
+      },
+      {
+        "type": "action",
+        "description": "Submit valid data"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify form submission succeeds and data is stored"
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Responsive Design Across Devices",
+    "description": "Test the responsiveness of all major user flows and UI components on desktop, tablet, and mobile screen sizes.",
+    "category": "ui",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Access public storefront, product pages, cart, checkout, and admin panel on desktop, tablet, and mobile"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that layouts adjust correctly with no overflow or UI breakage"
+      },
+      {
+        "type": "assertion",
+        "description": "Check that interactive elements remain usable and visible on all screen sizes"
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "SEO Metadata Verification",
+    "description": "Confirm that meta tags, JSON-LD schema markup, sitemap, and robots.txt are correctly generated and accessible.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to various pages and inspect meta tags in page source"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify that meta tag content matches expected SEO values"
+      },
+      {
+        "type": "action",
+        "description": "Access sitemap.xml and robots.txt URLs"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm files load correctly and contain correct entries"
+      },
+      {
+        "type": "action",
+        "description": "Verify JSON-LD structured data is present and valid on product and campaign pages"
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Media Library Management",
+    "description": "Test uploading, updating, and deleting images and videos in the media library and their usage in products, banners, and static pages.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login to admin and open media library"
+      },
+      {
+        "type": "action",
+        "description": "Upload new images and videos"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify media appears in library and is selectable"
+      },
+      {
+        "type": "action",
+        "description": "Assign media files to products, banners, and static pages"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm media renders correctly on the frontend"
+      },
+      {
+        "type": "action",
+        "description": "Delete media files"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify media is removed from library and references handle missing media gracefully"
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Site Settings Dynamic Updates",
+    "description": "Verify updates to dynamic site settings such as colors, logos, header marquee text, WhatsApp integration, and footer links are saved and applied immediately.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login to admin site settings page"
+      },
+      {
+        "type": "action",
+        "description": "Modify site colors, upload new logo, update WhatsApp number, edit header marquee and footer links"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm changes persist after save"
+      },
+      {
+        "type": "assertion",
+        "description": "Validate that changes reflect on all relevant frontend pages immediately"
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Static Page Content Management",
+    "description": "Test the creation, update, and deletion of static pages with content editor and verify automatic footer integration.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Create a new static page with rich text content"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify new page is accessible on frontend with correct content"
+      },
+      {
+        "type": "action",
+        "description": "Edit content of an existing static page"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm updates appear correctly on frontend"
+      },
+      {
+        "type": "action",
+        "description": "Delete a static page"
+      },
+      {
+        "type": "assertion",
+        "description": "Validate that deleted page returns 404 or redirects properly"
+      },
+      {
+        "type": "assertion",
+        "description": "Check footer integration includes links to appropriate static pages"
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Order Placing and Confirmation Flow",
+    "description": "Verify end-to-end order placement flow from cart to order confirmation page and email confirmation, including coupon application.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Add products with and without campaign discounts to cart"
+      },
+      {
+        "type": "action",
+        "description": "Proceed through checkout and enter valid shipping/payment info"
+      },
+      {
+        "type": "action",
+        "description": "Complete payment simulation using the PayTR test environment"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm order confirmation page displays correct order details and applied discounts"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify confirmation email is sent with accurate order data"
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Error Handling on Payment Failures",
+    "description": "Verify that payment failures via PayTR are handled gracefully with user notification and no order creation.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Start checkout and initiate payment process"
+      },
+      {
+        "type": "action",
+        "description": "Simulate a payment failure callback from PayTR"
+      },
+      {
+        "type": "assertion",
+        "description": "Ensure user receives clear error message indicating payment failure"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm no order record is created or if created, marked as failed"
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Admin Authentication and Authorization",
+    "description": "Ensure only authorized users can access the admin panel and admin routes have proper authentication checks.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Attempt to access admin panel without login"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify redirection to login page or access denied"
+      },
+      {
+        "type": "action",
+        "description": "Login with valid admin credentials"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm access to all admin pages"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to access admin APIs with invalid or missing tokens"
+      },
+      {
+        "type": "assertion",
+        "description": "Ensure all admin APIs reject unauthorized requests properly"
+      }
+    ]
+  },
+  {
+    "id": "TC019",
+    "title": "Performance Under Load",
+    "description": "Verify the application maintains acceptable performance and responsiveness during normal and peak user interactions.",
+    "category": "performance",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Simulate concurrent users browsing, customizing, and checking out products"
+      },
+      {
+        "type": "assertion",
+        "description": "Check page load times remain within acceptable limits"
+      },
+      {
+        "type": "action",
+        "description": "Simulate multiple admin CRUD operations simultaneously"
+      },
+      {
+        "type": "assertion",
+        "description": "Ensure no crashes or major slowdowns occur"
+      }
+    ]
+  },
+  {
+    "id": "TC020",
+    "title": "Robots.txt and Sitemap Accessibility",
+    "description": "Verify that robots.txt and sitemap.xml files are accessible and correctly configured to support SEO indexing.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Access /robots.txt URL"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify robots.txt loads and contains correct directives"
+      },
+      {
+        "type": "action",
+        "description": "Access /sitemap.xml URL"
+      },
+      {
+        "type": "assertion",
+        "description": "Confirm sitemap is well-formed and includes all relevant URLs"
+      }
+    ]
+  }
+]

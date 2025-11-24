@@ -4,8 +4,9 @@ import Image from 'next/image'
 import { prisma } from '@/lib/prisma'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ShoppingCart } from 'lucide-react'
+import { ShoppingCart, Filter, Grid, List, ArrowLeft, ArrowRight } from 'lucide-react'
 import { AddToCartButton } from '@/components/AddToCartButton'
+import { Breadcrumb } from '@/components/Breadcrumb'
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -28,10 +29,13 @@ export default async function CategoryPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ sort?: string }>
+  searchParams: Promise<{ sort?: string; page?: string }>
 }) {
   const { slug } = await params
-  const { sort } = await searchParams
+  const { sort = 'new', page = '1' } = await searchParams
+  const currentPage = parseInt(page as string) || 1
+  const itemsPerPage = 12
+
   const category = await prisma.category.findUnique({
     where: { slug },
   })
@@ -45,101 +49,238 @@ export default async function CategoryPage({
     orderBy = { price: 'asc' }
   } else if (sort === 'price-desc') {
     orderBy = { price: 'desc' }
+  } else if (sort === 'name-asc') {
+    orderBy = { name: 'asc' }
   }
 
-  const products = await prisma.product.findMany({
-    where: {
-      categoryId: category.id,
-      isActive: true,
-    },
-    include: {
-      images: { where: { isMain: true }, take: 1 },
-    },
-    orderBy,
-  })
+  const [products, totalCount] = await Promise.all([
+    prisma.product.findMany({
+      where: {
+        categoryId: category.id,
+        isActive: true,
+      },
+      include: {
+        images: { where: { isMain: true }, take: 1 },
+        campaign: {
+          where: {
+            isActive: true,
+            startDate: { lte: new Date() },
+            endDate: { gte: new Date() },
+          },
+        },
+      },
+      orderBy,
+      skip: (currentPage - 1) * itemsPerPage,
+      take: itemsPerPage,
+    }),
+    prisma.product.count({
+      where: {
+        categoryId: category.id,
+        isActive: true,
+      },
+    }),
+  ])
+
+  const totalPages = Math.ceil(totalCount / itemsPerPage)
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">{category.name}</h1>
-        {category.description && (
-          <p className="text-gray-600">{category.description}</p>
-        )}
-      </div>
-
-      <div className="mb-6 flex items-center justify-between">
-        <p className="text-gray-600">{products.length} ürün bulundu</p>
-        <div className="flex gap-2">
-          <Link href={`/kategori/${slug}?sort=new`}>
-            <Button variant="outline" size="sm">
-              Yeni Eklenenler
-            </Button>
-          </Link>
-          <Link href={`/kategori/${slug}?sort=price-asc`}>
-            <Button variant="outline" size="sm">
-              Fiyat Artan
-            </Button>
-          </Link>
-          <Link href={`/kategori/${slug}?sort=price-desc`}>
-            <Button variant="outline" size="sm">
-              Fiyat Azalan
-            </Button>
-          </Link>
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+      {/* Hero Section */}
+      <div className="bg-gradient-to-r from-primary via-purple-600 to-pink-600 text-white py-16 md:py-24">
+        <div className="container mx-auto px-4">
+          <Breadcrumb
+            items={[
+              { label: 'Ana Sayfa', href: '/' },
+              { label: 'Kategoriler', href: '/kategoriler' },
+              { label: category.name, href: `/kategori/${category.slug}` },
+            ]}
+          />
+          <h1 className="text-4xl md:text-6xl font-bold mb-4 mt-8">{category.name}</h1>
+          {category.description && (
+            <p className="text-xl md:text-2xl text-white/90 max-w-3xl">
+              {category.description}
+            </p>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-        {products.map((product) => {
-          const price = product.salePrice || product.price
-          const originalPrice = product.salePrice ? product.price : null
-          const mainImage = product.images[0]?.url || '/placeholder-product.jpg'
+      <div className="container mx-auto px-4 py-8 md:py-12">
+        {/* Filters and Sort */}
+        <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <Filter className="h-5 w-5 text-gray-600" />
+            <span className="text-gray-700 font-medium">
+              {totalCount} ürün bulundu
+            </span>
+          </div>
 
-          return (
-            <Card key={product.id} className="hover:shadow-lg transition cursor-pointer h-full flex flex-col">
-              <Link href={`/urun/${product.slug}`}>
-                <div className="relative w-full aspect-square">
-                  <Image
-                    src={mainImage}
-                    alt={product.name}
-                    fill
-                    className="object-cover rounded-t-lg"
-                  />
-                  {product.salePrice && (
-                    <span className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-semibold">
-                      İndirim
-                    </span>
-                  )}
+          <div className="flex flex-wrap gap-2">
+            <Link href={`/kategori/${slug}?sort=new&page=1`}>
+              <Button
+                variant={sort === 'new' ? 'default' : 'outline'}
+                size="sm"
+                className="rounded-full"
+              >
+                Yeni Eklenenler
+              </Button>
+            </Link>
+            <Link href={`/kategori/${slug}?sort=price-asc&page=1`}>
+              <Button
+                variant={sort === 'price-asc' ? 'default' : 'outline'}
+                size="sm"
+                className="rounded-full"
+              >
+                Fiyat: Düşükten Yükseğe
+              </Button>
+            </Link>
+            <Link href={`/kategori/${slug}?sort=price-desc&page=1`}>
+              <Button
+                variant={sort === 'price-desc' ? 'default' : 'outline'}
+                size="sm"
+                className="rounded-full"
+              >
+                Fiyat: Yüksekten Düşüğe
+              </Button>
+            </Link>
+            <Link href={`/kategori/${slug}?sort=name-asc&page=1`}>
+              <Button
+                variant={sort === 'name-asc' ? 'default' : 'outline'}
+                size="sm"
+                className="rounded-full"
+              >
+                İsme Göre (A-Z)
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Products Grid */}
+        {products.length > 0 ? (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+              {products.map((product) => {
+                const price = product.salePrice || product.price
+                const originalPrice = product.salePrice ? product.price : null
+                const mainImage = product.images[0]?.url || '/placeholder-product.jpg'
+                
+                // Check for active campaign
+                let hasCampaign = false
+                let campaignPrice = price
+                if (product.campaign && product.campaign.length > 0) {
+                  const activeCampaign = product.campaign[0]
+                  hasCampaign = true
+                  if (activeCampaign.discountPercent) {
+                    campaignPrice = price - (price * activeCampaign.discountPercent / 100)
+                  } else if (activeCampaign.discountAmount) {
+                    campaignPrice = Math.max(0, price - activeCampaign.discountAmount)
+                  }
+                }
+
+                return (
+                  <Card
+                    key={product.id}
+                    className="hover:shadow-xl transition-all duration-300 cursor-pointer h-full flex flex-col group border-2 border-transparent hover:border-primary/20"
+                  >
+                    <Link href={`/urun/${product.slug}`}>
+                      <div className="relative w-full aspect-square overflow-hidden rounded-t-lg bg-gray-100">
+                        <Image
+                          src={mainImage}
+                          alt={product.name}
+                          fill
+                          className="object-cover group-hover:scale-110 transition-transform duration-300"
+                        />
+                        {(product.salePrice || hasCampaign) && (
+                          <span className="absolute top-2 right-2 bg-gradient-to-r from-red-500 to-pink-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+                            İndirim
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+                    <CardContent className="p-4 flex-1 flex flex-col">
+                      <Link href={`/urun/${product.slug}`}>
+                        <h3 className="font-semibold mb-2 line-clamp-2 hover:text-primary transition min-h-[3rem]">
+                          {product.name}
+                        </h3>
+                      </Link>
+                      <div className="mt-auto space-y-2">
+                        {originalPrice && (
+                          <p className="text-sm text-gray-500 line-through">
+                            {new Intl.NumberFormat('tr-TR', {
+                              style: 'currency',
+                              currency: 'TRY',
+                            }).format(originalPrice)}
+                          </p>
+                        )}
+                        <p className="text-lg font-bold text-primary">
+                          {new Intl.NumberFormat('tr-TR', {
+                            style: 'currency',
+                            currency: 'TRY',
+                          }).format(hasCampaign ? campaignPrice : price)}
+                        </p>
+                        <AddToCartButton product={product} />
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center gap-2 mt-8">
+                {currentPage > 1 && (
+                  <Link href={`/kategori/${slug}?sort=${sort}&page=${currentPage - 1}`}>
+                    <Button variant="outline" size="sm">
+                      <ArrowLeft className="h-4 w-4 mr-1" />
+                      Önceki
+                    </Button>
+                  </Link>
+                )}
+                <div className="flex gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum
+                    if (totalPages <= 5) {
+                      pageNum = i + 1
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i
+                    } else {
+                      pageNum = currentPage - 2 + i
+                    }
+                    return (
+                      <Link key={pageNum} href={`/kategori/${slug}?sort=${sort}&page=${pageNum}`}>
+                        <Button
+                          variant={currentPage === pageNum ? 'default' : 'outline'}
+                          size="sm"
+                          className="min-w-[2.5rem]"
+                        >
+                          {pageNum}
+                        </Button>
+                      </Link>
+                    )
+                  })}
                 </div>
-              </Link>
-              <CardContent className="p-4 flex-1 flex flex-col">
-                <Link href={`/urun/${product.slug}`}>
-                  <h3 className="font-semibold mb-2 line-clamp-2 hover:text-primary transition">
-                    {product.name}
-                  </h3>
-                </Link>
-                <div className="mt-auto space-y-2">
-                  {originalPrice && (
-                    <p className="text-sm text-gray-500 line-through">
-                      {new Intl.NumberFormat('tr-TR', {
-                        style: 'currency',
-                        currency: 'TRY',
-                      }).format(originalPrice)}
-                    </p>
-                  )}
-                  <p className="text-lg font-bold text-primary">
-                    {new Intl.NumberFormat('tr-TR', {
-                      style: 'currency',
-                      currency: 'TRY',
-                    }).format(price)}
-                  </p>
-                  <AddToCartButton product={product} />
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
+                {currentPage < totalPages && (
+                  <Link href={`/kategori/${slug}?sort=${sort}&page=${currentPage + 1}`}>
+                    <Button variant="outline" size="sm">
+                      Sonraki
+                      <ArrowRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="text-center py-16">
+            <p className="text-xl text-gray-600 mb-4">Bu kategoride henüz ürün bulunmamaktadır.</p>
+            <Link href="/kategoriler">
+              <Button>Diğer Kategorilere Göz At</Button>
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   )
 }
-

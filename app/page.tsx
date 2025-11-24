@@ -1,16 +1,34 @@
 import Link from 'next/link'
-import Image from 'next/image'
 import { prisma } from '@/lib/prisma'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Truck, Shield, FileText } from 'lucide-react'
+import { Sparkles, TrendingUp } from 'lucide-react'
 import { BannerSlider } from '@/components/BannerSlider'
+import { ProductCard } from '@/components/ProductCard'
+import { Suspense } from 'react'
+import { ProductCardSkeleton } from '@/components/SkeletonLoader'
+import { HeroSection } from '@/components/HeroSection'
+import { StatsSection } from '@/components/StatsSection'
+import { FeaturesShowcase } from '@/components/FeaturesShowcase'
+import { NewsletterSection } from '@/components/NewsletterSection'
+import { TestimonialsSection } from '@/components/TestimonialsSection'
+import { SocialProofSection } from '@/components/SocialProofSection'
+import { CategoryShowcase } from '@/components/CategoryShowcase'
+import { VideoBackgroundSection } from '@/components/VideoBackgroundSection'
+import { ProductShowcase } from '@/components/ProductShowcase'
 
 export default async function HomePage() {
   const banners = await prisma.banner.findMany({
     where: { isActive: true },
     orderBy: { position: 'asc' },
     take: 3,
+    select: {
+      id: true,
+      title: true,
+      type: true,
+      filePath: true,
+      linkUrl: true,
+    },
   })
 
   const categories = await prisma.category.findMany({
@@ -30,117 +48,50 @@ export default async function HomePage() {
   })
 
   return (
-    <div>
-      {/* Hero Banner Section */}
-      <BannerSlider banners={banners} />
+    <div className="overflow-hidden">
+      {/* Banner Slider */}
+      {banners.length > 0 && (
+        <section className="bg-background">
+          <BannerSlider banners={banners} />
+        </section>
+      )}
 
-      {/* Trust Badges */}
-      <section className="container mx-auto px-4 mb-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="text-center p-6">
-            <Truck className="h-12 w-12 mx-auto mb-4 text-primary" />
-            <h3 className="font-semibold mb-2">Aynı Gün Kargo</h3>
-            <p className="text-sm text-gray-600">Siparişleriniz aynı gün kargoya verilir</p>
-          </Card>
-          <Card className="text-center p-6">
-            <Shield className="h-12 w-12 mx-auto mb-4 text-primary" />
-            <h3 className="font-semibold mb-2">Güvenli Ödeme</h3>
-            <p className="text-sm text-gray-600">256-bit SSL ile güvenli ödeme</p>
-          </Card>
-          <Card className="text-center p-6">
-            <FileText className="h-12 w-12 mx-auto mb-4 text-primary" />
-            <h3 className="font-semibold mb-2">Faturalı Ürünler</h3>
-            <p className="text-sm text-gray-600">Tüm ürünlerimiz faturalıdır</p>
-          </Card>
+      {/* Modern Hero Section */}
+      <HeroSection />
+
+      {/* Featured Products - Hemen Hero Section Altında */}
+      <Suspense fallback={
+        <div className="py-20">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6 container mx-auto px-4">
+            {[...Array(8)].map((_, i) => (
+              <ProductCardSkeleton key={i} />
+            ))}
+          </div>
         </div>
-      </section>
+      }>
+        <ProductShowcase products={featuredProducts} />
+      </Suspense>
 
-      {/* Categories Section */}
-      <section className="container mx-auto px-4 mb-12">
-        <h2 className="text-2xl md:text-3xl font-bold mb-6">Kategoriler</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {categories.map((category) => (
-            <Link key={category.id} href={`/kategori/${category.slug}`}>
-              <Card className="hover:shadow-lg transition cursor-pointer h-full">
-                <CardContent className="p-6 text-center">
-                  <h3 className="font-semibold">{category.name}</h3>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      </section>
+      {/* Stats Section */}
+      <StatsSection />
 
-      {/* Featured Products */}
-      <section className="container mx-auto px-4 mb-12">
-        <h2 className="text-2xl md:text-3xl font-bold mb-6">Öne Çıkan Ürünler</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6">
-          {featuredProducts.map((product) => {
-            // Calculate price with campaign
-            let finalPrice = product.salePrice || product.price
-            let originalPrice = product.salePrice ? product.price : null
-            let hasCampaign = false
+      {/* Social Proof */}
+      <SocialProofSection />
 
-            if (product.campaign && product.campaign.isActive) {
-              const now = new Date()
-              const startDate = new Date(product.campaign.startDate)
-              const endDate = new Date(product.campaign.endDate)
-              
-              if (now >= startDate && now <= endDate) {
-                hasCampaign = true
-                if (product.campaign.discountPercent) {
-                  originalPrice = finalPrice
-                  finalPrice = finalPrice - (finalPrice * product.campaign.discountPercent / 100)
-                } else if (product.campaign.discountAmount) {
-                  originalPrice = finalPrice
-                  finalPrice = Math.max(0, finalPrice - product.campaign.discountAmount)
-                }
-              }
-            }
+      {/* Category Showcase */}
+      <CategoryShowcase categories={categories} />
 
-            const mainImage = product.images[0]?.url || '/placeholder-product.jpg'
+      {/* Features Showcase */}
+      <FeaturesShowcase />
 
-            return (
-              <Link key={product.id} href={`/urun/${product.slug}`}>
-                <Card className="hover:shadow-lg transition cursor-pointer h-full flex flex-col">
-                  <div className="relative w-full aspect-square">
-                    <Image
-                      src={mainImage}
-                      alt={product.name}
-                      fill
-                      className="object-cover rounded-t-lg"
-                    />
-                    {(product.salePrice || hasCampaign) && (
-                      <span className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-semibold">
-                        {hasCampaign ? 'Kampanya' : 'İndirim'}
-                      </span>
-                    )}
-                  </div>
-                  <CardContent className="p-4 flex-1 flex flex-col">
-                    <h3 className="font-semibold mb-2 line-clamp-2">{product.name}</h3>
-                    <div className="mt-auto">
-                      {originalPrice && originalPrice > finalPrice && (
-                        <p className="text-sm text-gray-500 line-through">
-                          {new Intl.NumberFormat('tr-TR', {
-                            style: 'currency',
-                            currency: 'TRY',
-                          }).format(originalPrice)}
-                        </p>
-                      )}
-                      <p className="text-lg font-bold text-primary">
-                        {new Intl.NumberFormat('tr-TR', {
-                          style: 'currency',
-                          currency: 'TRY',
-                        }).format(finalPrice)}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            )
-          })}
-        </div>
-      </section>
+      {/* Video Background Section */}
+      <VideoBackgroundSection />
+
+      {/* Testimonials Section */}
+      <TestimonialsSection />
+
+      {/* Newsletter Section */}
+      <NewsletterSection />
     </div>
   )
 }

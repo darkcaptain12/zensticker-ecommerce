@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { AVAILABLE_FONTS } from '@/lib/fonts'
 
 export async function PATCH(
   request: NextRequest,
@@ -51,20 +52,13 @@ export async function PATCH(
     if (data.isCustomizable) {
       await prisma.customStickerOption.upsert({
         where: { productId: product.id },
-        update: {},
+        update: {
+          availableFonts: AVAILABLE_FONTS, // Update existing fonts too
+        },
         create: {
           productId: product.id,
           label: 'İsim Stickerı',
-          availableFonts: [
-            'Arial',
-            'Helvetica',
-            'Times New Roman',
-            'Courier New',
-            'Verdana',
-            'Georgia',
-            'Comic Sans MS',
-            'Impact',
-          ],
+          availableFonts: AVAILABLE_FONTS,
           maxCharacters: 50,
         },
       })

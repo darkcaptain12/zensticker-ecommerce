@@ -1,14 +1,33 @@
 import crypto from 'crypto'
 
+// Get PayTR credentials from environment variables
+export function getPayTRConfig() {
+  const merchantId = process.env.PAYTR_MERCHANT_ID
+  const merchantKey = process.env.PAYTR_MERCHANT_KEY
+  const merchantSalt = process.env.PAYTR_MERCHANT_SALT
+  const testMode = process.env.PAYTR_TEST_MODE || '1'
+
+  if (!merchantId || !merchantKey || !merchantSalt) {
+    throw new Error('PayTR credentials are not configured. Please check your environment variables.')
+  }
+
+  return {
+    merchantId,
+    merchantKey,
+    merchantSalt,
+    testMode,
+  }
+}
+
 export interface PayTRInitParams {
-  merchantId: string
-  merchantKey: string
-  merchantSalt: string
   email: string
-  paymentAmount: number
+  paymentAmount: number // Amount in TL
   merchantOid: string
   userIp: string
   userBasket: string
+  userName: string
+  userAddress: string
+  userPhone: string
   testMode?: string
   noInstallment?: number
   maxInstallment?: number
@@ -27,46 +46,58 @@ export interface PayTRResponse {
  * This creates the token and parameters needed for PayTR iframe
  */
 export async function initPayTRPayment(params: PayTRInitParams): Promise<PayTRResponse> {
+  const config = getPayTRConfig()
+  
   const {
-    merchantId,
-    merchantKey,
-    merchantSalt,
     email,
     paymentAmount,
     merchantOid,
     userIp,
     userBasket,
-    testMode = '1',
+    userName,
+    userAddress,
+    userPhone,
+    testMode = config.testMode,
     noInstallment = 0,
     maxInstallment = 0,
     currency = 'TL',
     lang = 'tr',
   } = params
 
-  // Create hash string
-  const hashStr = `${merchantId}${userIp}${merchantOid}${email}${paymentAmount}${userBasket}${noInstallment}${maxInstallment}${testMode}${currency}${lang}${merchantSalt}`
+  // Payment amount in kuruş (cents)
+  const paymentAmountKurus = Math.round(paymentAmount * 100)
+
+  // Create hash string according to PayTR documentation
+  // merchant_id + user_ip + merchant_oid + email + payment_amount + user_basket + no_installment + max_installment + test_mode + currency + lang + merchant_salt
+  const hashStr = `${config.merchantId}${userIp}${merchantOid}${email}${paymentAmountKurus}${userBasket}${noInstallment}${maxInstallment}${testMode}${currency}${lang}${config.merchantSalt}`
   
+  // Calculate HMAC-SHA256 hash
   const hash = crypto
-    .createHash('sha256')
+    .createHmac('sha256', config.merchantKey)
     .update(hashStr)
     .digest('base64')
 
+  // Base URL for redirect URLs
+  const baseUrl = process.env.NEXTAUTH_URL || process.env.VERCEL_URL 
+    ? `https://${process.env.VERCEL_URL || 'zensticker.com.tr'}` 
+    : 'https://zensticker.com.tr'
+
   const postData = {
-    merchant_id: merchantId,
+    merchant_id: config.merchantId,
     user_ip: userIp,
     merchant_oid: merchantOid,
     email,
-    payment_amount: paymentAmount * 100, // PayTR expects amount in kuruş (cents)
+    payment_amount: paymentAmountKurus,
     paytr_token: hash,
     user_basket: userBasket,
     debug_on: testMode,
     no_installment: noInstallment,
     max_installment: maxInstallment,
-    user_name: email.split('@')[0],
-    user_address: '',
-    user_phone: '',
-    merchant_ok_url: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/odeme/paytr-success`,
-    merchant_fail_url: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/odeme/paytr-fail`,
+    user_name: userName,
+    user_address: userAddress,
+    user_phone: userPhone,
+    merchant_ok_url: `${baseUrl}/odeme/paytr-success`,
+    merchant_fail_url: `${baseUrl}/odeme/paytr-fail`,
     timeout_limit: 30,
     currency: currency,
     lang: lang,
@@ -107,17 +138,22 @@ export async function initPayTRPayment(params: PayTRInitParams): Promise<PayTRRe
 
 /**
  * Verify PayTR callback hash
+ * According to PayTR documentation: hash = HMAC-SHA256(merchant_salt + merchant_oid + status + total_amount, merchant_key)
  */
 export function verifyPayTRCallback(
-  merchantSalt: string,
   merchantOid: string,
   status: string,
   totalAmount: string,
   hash: string
 ): boolean {
-  const hashStr = `${merchantSalt}${merchantOid}${status}${totalAmount}`
+  const config = getPayTRConfig()
+  
+  // Create hash string: merchant_salt + merchant_oid + status + total_amount
+  const hashStr = `${config.merchantSalt}${merchantOid}${status}${totalAmount}`
+  
+  // Calculate HMAC-SHA256 hash
   const calculatedHash = crypto
-    .createHash('sha256')
+    .createHmac('sha256', config.merchantKey)
     .update(hashStr)
     .digest('base64')
 

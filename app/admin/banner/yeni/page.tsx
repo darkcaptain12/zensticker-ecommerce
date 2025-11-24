@@ -4,8 +4,8 @@ const availableBanners = Array.from({ length: 15 }, (_, i) => `/banner/banner${i
 
 export default function NewBannerPage() {
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-8">Yeni Banner</h1>
+    <div className="p-4 md:p-6">
+      <h1 className="text-3xl font-bold mb-8 text-foreground">Yeni Banner</h1>
       <BannerForm availableBanners={availableBanners} />
     </div>
   )

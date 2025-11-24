@@ -6,6 +6,7 @@ import { Footer } from '@/components/Footer'
 import { WhatsAppButton } from '@/components/WhatsAppButton'
 import { Providers } from '@/components/Providers'
 import { DynamicStyles } from '@/components/DynamicStyles'
+import { Toaster } from '@/components/ui/toaster'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -20,8 +21,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="tr">
-      <body className={inter.className}>
+    <html lang="tr" suppressHydrationWarning>
+      <body className={`${inter.className} antialiased`}>
         <DynamicStyles />
         <Providers>
           <div className="flex min-h-screen flex-col">
@@ -29,6 +30,7 @@ export default function RootLayout({
             <main className="flex-1">{children}</main>
             <Footer />
             <WhatsAppButton />
+            <Toaster />
           </div>
         </Providers>
       </body>

@@ -16,6 +16,7 @@ export async function GET() {
       primaryColor: settings.primaryColor,
       secondaryColor: settings.secondaryColor,
       headerMarqueeText: settings.headerMarqueeText,
+      videoBackgroundUrl: settings.videoBackgroundUrl,
     })
   } catch (error) {
     console.error('Error fetching site settings:', error)

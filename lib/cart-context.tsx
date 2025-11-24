@@ -13,6 +13,14 @@ export interface CartItem {
   customFont?: string
 }
 
+interface CampaignDiscount {
+  id: string
+  title: string
+  discountPercent?: number | null
+  discountAmount?: number | null
+  calculatedDiscount: number
+}
+
 interface CartContextType {
   items: CartItem[]
   addItem: (item: CartItem) => void
@@ -21,12 +29,16 @@ interface CartContextType {
   clearCart: () => void
   itemCount: number
   total: number
+  campaignDiscount: CampaignDiscount | null
+  subtotal: number // Total before campaign discount
+  finalTotal: number // Total after campaign discount
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
+  const [campaignDiscount, setCampaignDiscount] = useState<CampaignDiscount | null>(null)
 
   useEffect(() => {
     const saved = localStorage.getItem('cart')
@@ -37,6 +49,35 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     localStorage.setItem('cart', JSON.stringify(items))
+  }, [items])
+
+  // Check for campaign discounts when cart total changes
+  useEffect(() => {
+    const checkCampaign = async () => {
+      const subtotal = items.reduce(
+        (sum, item) => sum + (item.salePrice || item.price) * item.quantity,
+        0
+      )
+
+      if (subtotal > 0) {
+        try {
+          const response = await fetch('/api/campaigns/check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cartTotal: subtotal }),
+          })
+          const data = await response.json()
+          setCampaignDiscount(data.campaign)
+        } catch (error) {
+          console.error('Error checking campaigns:', error)
+          setCampaignDiscount(null)
+        }
+      } else {
+        setCampaignDiscount(null)
+      }
+    }
+
+    checkCampaign()
   }, [items])
 
   const addItem = (item: CartItem) => {
@@ -72,10 +113,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }
 
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
-  const total = items.reduce(
+  const subtotal = items.reduce(
     (sum, item) => sum + (item.salePrice || item.price) * item.quantity,
     0
   )
+  
+  // Apply campaign discount
+  const discountAmount = campaignDiscount?.calculatedDiscount || 0
+  const finalTotal = Math.max(0, subtotal - discountAmount)
 
   return (
     <CartContext.Provider
@@ -86,7 +131,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
         updateQuantity,
         clearCart,
         itemCount,
-        total,
+        total: finalTotal, // Keep 'total' for backward compatibility
+        campaignDiscount,
+        subtotal,
+        finalTotal,
       }}
     >
       {children}

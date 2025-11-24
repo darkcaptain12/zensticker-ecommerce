@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 interface Banner {
   id: string
   title: string
+  type: 'IMAGE' | 'VIDEO'
   filePath: string
   linkUrl?: string | null
 }
@@ -52,13 +53,48 @@ export function BannerSlider({ banners }: BannerSliderProps) {
   }
 
   const currentBanner = banners[currentIndex]
+  const isVideo = currentBanner.type === 'VIDEO'
 
   return (
     <section className="relative w-full h-[400px] sm:h-[500px] md:h-[600px] lg:h-[700px] mb-12 overflow-hidden">
-      {/* Banner Image */}
+      {/* Banner Image/Video */}
       <div className="relative w-full h-full">
-        {currentBanner.linkUrl ? (
-          <Link href={currentBanner.linkUrl} className="block w-full h-full">
+        {isVideo ? (
+          currentBanner.linkUrl ? (
+            <Link href={currentBanner.linkUrl} className="block w-full h-full">
+              <video
+                src={currentBanner.filePath}
+                className="w-full h-full object-contain"
+                autoPlay
+                muted
+                loop
+                playsInline
+              />
+            </Link>
+          ) : (
+            <video
+              src={currentBanner.filePath}
+              className="w-full h-full object-contain"
+              autoPlay
+              muted
+              loop
+              playsInline
+            />
+          )
+        ) : (
+          currentBanner.linkUrl ? (
+            <Link href={currentBanner.linkUrl} className="block w-full h-full">
+              <Image
+                src={currentBanner.filePath}
+                alt={currentBanner.title}
+                fill
+                className="object-contain"
+                priority
+                quality={95}
+                sizes="100vw"
+              />
+            </Link>
+          ) : (
             <Image
               src={currentBanner.filePath}
               alt={currentBanner.title}
@@ -68,17 +104,7 @@ export function BannerSlider({ banners }: BannerSliderProps) {
               quality={95}
               sizes="100vw"
             />
-          </Link>
-        ) : (
-          <Image
-            src={currentBanner.filePath}
-            alt={currentBanner.title}
-            fill
-            className="object-contain"
-            priority
-            quality={95}
-            sizes="100vw"
-          />
+          )
         )}
       </div>
 

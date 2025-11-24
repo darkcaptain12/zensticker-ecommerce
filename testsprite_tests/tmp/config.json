@@ -1,0 +1,18 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:3001",
+  "loginUser": "admin@zensticker.com",
+  "loginPassword": "Admin123!",
+  "executionArgs": {
+    "projectName": "zensticker-ecommerce",
+    "projectPath": "/Users/emir/Desktop/zensticker-ecommerce",
+    "testIds": [],
+    "additionalInstruction": "PayTR test mode aktif. Admin paneli testleri için login gerekli: admin@zensticker.com / Admin123!. Tüm public storefront ve admin paneli özelliklerini test et. Kampanya hesaplamalarını, görsel yükleme özelliklerini, form validasyonlarını ve responsive tasarımı kontrol et.",
+    "envs": {
+      "API_KEY": "sk-user-icFyaJfe251EztGCVMc_evZqGlnwlQsUi6AzU0f_QEQIl5UB_2eAUUanbvetE1Q0TQHXMi3lRnf4g5FOYTA1Pnj3FVVql8lBj3O1aJKjPbZKNj8EJYu9VkrtBz2KBVfCOpE"
+    }
+  },
+  "proxy": "http://feada286-c20c-426b-8584-fc302d3fa52f:vQsFX6YGglUlRnCzAIqo9V3Ixr4OFYWt@tun.testsprite.com:8080"
+}

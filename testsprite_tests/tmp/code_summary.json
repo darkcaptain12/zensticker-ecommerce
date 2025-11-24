@@ -1,0 +1,202 @@
+{
+  "tech_stack": [
+    "TypeScript",
+    "Next.js 14",
+    "React 18",
+    "Tailwind CSS",
+    "Prisma ORM",
+    "PostgreSQL",
+    "NextAuth.js",
+    "shadcn/ui",
+    "PayTR Payment Gateway",
+    "Node.js"
+  ],
+  "features": [
+    {
+      "name": "Public Storefront",
+      "description": "Public-facing e-commerce storefront with product browsing, categories, campaigns, cart, and checkout",
+      "files": [
+        "app/page.tsx",
+        "app/kategoriler/page.tsx",
+        "app/kategori/[slug]/page.tsx",
+        "app/kampanyalar/page.tsx",
+        "app/urun/[slug]/page.tsx",
+        "app/sepet/page.tsx",
+        "app/odeme/page.tsx",
+        "app/odeme/paytr/page.tsx",
+        "components/Header.tsx",
+        "components/Footer.tsx",
+        "components/BannerSlider.tsx",
+        "components/AddToCartButton.tsx",
+        "components/ProductDetailClient.tsx",
+        "components/HeaderMarquee.tsx",
+        "components/WhatsAppButton.tsx"
+      ]
+    },
+    {
+      "name": "Admin Panel",
+      "description": "Complete admin panel for managing products, categories, campaigns, banners, orders, users, and site settings",
+      "files": [
+        "app/admin/page.tsx",
+        "app/admin/layout.tsx",
+        "app/admin/urunler/page.tsx",
+        "app/admin/urunler/yeni/page.tsx",
+        "app/admin/urunler/[id]/page.tsx",
+        "app/admin/kategoriler/page.tsx",
+        "app/admin/kategoriler/yeni/page.tsx",
+        "app/admin/kategoriler/[id]/page.tsx",
+        "app/admin/kampanyalar/page.tsx",
+        "app/admin/kampanyalar/yeni/page.tsx",
+        "app/admin/kampanyalar/[id]/page.tsx",
+        "app/admin/banner/page.tsx",
+        "app/admin/banner/yeni/page.tsx",
+        "app/admin/banner/[id]/page.tsx",
+        "app/admin/site-ayarlari/page.tsx",
+        "app/admin/static-pages/page.tsx",
+        "app/admin/siparisler/page.tsx",
+        "app/admin/kullanicilar/page.tsx",
+        "components/admin/ProductForm.tsx",
+        "components/admin/ProductImageManager.tsx",
+        "components/admin/CategoryForm.tsx",
+        "components/admin/CampaignForm.tsx",
+        "components/admin/BannerForm.tsx",
+        "components/admin/SiteSettingsForm.tsx",
+        "components/admin/StaticPageForm.tsx"
+      ]
+    },
+    {
+      "name": "Authentication",
+      "description": "User authentication system with NextAuth.js supporting email/password login and registration",
+      "files": [
+        "app/giris/page.tsx",
+        "app/kayit/page.tsx",
+        "app/profil/page.tsx",
+        "lib/auth.ts",
+        "app/api/auth/[...nextauth]/route.ts",
+        "app/api/auth/register/route.ts"
+      ]
+    },
+    {
+      "name": "Product Management",
+      "description": "Complete product management system with images, videos, custom options, campaigns, and inventory",
+      "files": [
+        "app/api/admin/products/route.ts",
+        "app/api/admin/products/[id]/route.ts",
+        "app/api/admin/products-list/route.ts",
+        "app/api/admin/product-images/route.ts",
+        "components/admin/ProductForm.tsx",
+        "components/admin/ProductImageManager.tsx",
+        "prisma/schema.prisma"
+      ]
+    },
+    {
+      "name": "Campaign System",
+      "description": "Advanced campaign management with percentage discounts, fixed amounts, category-specific, product-specific, and package deals",
+      "files": [
+        "app/api/admin/campaigns/route.ts",
+        "app/api/admin/campaigns/[id]/route.ts",
+        "components/admin/CampaignForm.tsx",
+        "app/kampanyalar/page.tsx",
+        "prisma/schema.prisma"
+      ]
+    },
+    {
+      "name": "Shopping Cart",
+      "description": "Shopping cart functionality with add, remove, update quantity, and campaign discount calculations",
+      "files": [
+        "app/sepet/page.tsx",
+        "lib/cart-context.tsx",
+        "components/AddToCartButton.tsx"
+      ]
+    },
+    {
+      "name": "Payment Integration",
+      "description": "PayTR payment gateway integration with test mode support for secure payment processing",
+      "files": [
+        "app/odeme/page.tsx",
+        "app/odeme/paytr/page.tsx",
+        "app/odeme/paytr/PaytrClientPage.tsx",
+        "app/api/paytr/init/route.ts",
+        "app/api/paytr/callback/route.ts",
+        "lib/paytr.ts"
+      ]
+    },
+    {
+      "name": "Order Management",
+      "description": "Order tracking, status updates, and order history for both customers and admins",
+      "files": [
+        "app/kargo-takip/page.tsx",
+        "app/siparis-tesekkur/[orderNumber]/page.tsx",
+        "app/api/kargo-takip/route.ts",
+        "app/admin/siparisler/page.tsx",
+        "components/OrderTrackingClient.tsx",
+        "components/admin/UpdateOrderStatus.tsx"
+      ]
+    },
+    {
+      "name": "Banner Management",
+      "description": "Banner slider system with image management, positioning, and responsive display",
+      "files": [
+        "app/api/admin/banners/route.ts",
+        "app/api/admin/banners/[id]/route.ts",
+        "components/admin/BannerForm.tsx",
+        "components/BannerSlider.tsx"
+      ]
+    },
+    {
+      "name": "Site Settings",
+      "description": "Dynamic site settings including colors, logos, WhatsApp number, header marquee text, and footer links",
+      "files": [
+        "app/api/admin/site-settings/route.ts",
+        "app/api/site-settings/route.ts",
+        "components/admin/SiteSettingsForm.tsx",
+        "components/DynamicStyles.tsx",
+        "components/HeaderMarquee.tsx"
+      ]
+    },
+    {
+      "name": "Static Pages",
+      "description": "Dynamic static page management system with content editor and automatic footer integration",
+      "files": [
+        "app/[slug]/page.tsx",
+        "app/api/admin/static-pages/route.ts",
+        "app/api/admin/static-pages/[id]/route.ts",
+        "components/admin/StaticPageForm.tsx"
+      ]
+    },
+    {
+      "name": "Media Library",
+      "description": "Centralized media library for managing reusable images and videos across the platform",
+      "files": [
+        "app/api/admin/assets/route.ts",
+        "app/api/admin/product-images/route.ts",
+        "components/admin/ProductImageManager.tsx"
+      ]
+    },
+    {
+      "name": "Custom Sticker Options",
+      "description": "Personalization feature for custom stickers with font selection, text input, and live preview",
+      "files": [
+        "components/ProductDetailClient.tsx",
+        "prisma/schema.prisma"
+      ]
+    },
+    {
+      "name": "SEO Optimization",
+      "description": "SEO features including meta tags, JSON-LD schema, sitemap, and robots.txt",
+      "files": [
+        "app/sitemap.ts",
+        "app/robots.ts",
+        "app/layout.tsx"
+      ]
+    },
+    {
+      "name": "Database Schema",
+      "description": "Prisma schema defining all data models including User, Product, Category, Order, Campaign, Banner, and SiteSettings",
+      "files": [
+        "prisma/schema.prisma"
+      ]
+    }
+  ]
+}
+

@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { CheckCircle } from 'lucide-react'
 
+export const dynamic = 'force-dynamic'
+
 export default function PayTRSuccessPage({
   searchParams,
 }: {

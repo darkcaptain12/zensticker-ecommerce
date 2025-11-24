@@ -1,10 +1,12 @@
 import { notFound } from 'next/navigation'
-import Image from 'next/image'
 import { prisma } from '@/lib/prisma'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ShoppingCart, Package } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { ProductDetailClient } from '@/components/ProductDetailClient'
+import { ProductImageGallery } from '@/components/ProductImageGallery'
+import { Breadcrumb } from '@/components/Breadcrumb'
+import { ProductCard } from '@/components/ProductCard'
+import Link from 'next/link'
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -38,6 +40,21 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   if (!product) {
     notFound()
   }
+
+  // Get related products (same category, different product)
+  const relatedProducts = await prisma.product.findMany({
+    where: {
+      categoryId: product.categoryId,
+      id: { not: product.id },
+      isActive: true,
+    },
+    include: {
+      images: { where: { isMain: true }, take: 1 },
+      campaign: true,
+    },
+    take: 4,
+    orderBy: { createdAt: 'desc' },
+  })
 
   // Calculate price with campaign discount
   let finalPrice = product.salePrice || product.price
@@ -87,92 +104,68 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Breadcrumb
+          items={[
+            { label: product.category.name, href: `/kategori/${product.category.slug}` },
+            { label: product.name },
+          ]}
+        />
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 mb-16 mt-6">
           {/* Product Images */}
           <div>
-            <div className="relative w-full aspect-square mb-4 rounded-lg overflow-hidden bg-gray-100">
-              {product.images.length > 0 ? (
-                product.images[0].isVideo ? (
-                  <video
-                    src={product.images[0].url}
-                    className="w-full h-full object-contain"
-                    controls
-                    autoPlay
-                    muted
-                    loop
-                  />
-                ) : (
-                  <Image
-                    src={product.images[0].url}
-                    alt={product.images[0].altText || product.name}
-                    fill
-                    className="object-contain"
-                    priority
-                  />
-                )
-              ) : (
-                <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                  <Package className="h-24 w-24 text-gray-400" />
-                </div>
-              )}
-            </div>
-            {product.images.length > 1 && (
-              <div className="grid grid-cols-4 gap-2">
-                {product.images.slice(1, 5).map((image) => (
-                  <div key={image.id} className="relative aspect-square rounded overflow-hidden bg-gray-100">
-                    {image.isVideo ? (
-                      <video
-                        src={image.url}
-                        className="w-full h-full object-cover"
-                        controls
-                      />
-                    ) : (
-                      <Image
-                        src={image.url}
-                        alt={image.altText || product.name}
-                        fill
-                        className="object-cover"
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+            <ProductImageGallery
+              images={product.images.map(img => ({
+                id: img.id,
+                url: img.url,
+                altText: img.altText,
+                isVideo: img.isVideo,
+              }))}
+              productName={product.name}
+            />
           </div>
 
           {/* Product Info */}
-          <div>
-            <h1 className="text-3xl font-bold mb-2">{product.name}</h1>
-            <p className="text-gray-600 mb-4">{product.category.name}</p>
+          <div className="space-y-6">
+            <div>
+              <Link href={`/kategori/${product.category.slug}`}>
+                <Badge variant="outline" className="mb-3 hover:bg-primary/20 hover:text-primary hover:border-primary/50 transition-all border-border dark:border-dark-border text-foreground dark:text-white">
+                  {product.category.name}
+                </Badge>
+              </Link>
+              <h1 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">{product.name}</h1>
+            </div>
 
-            <div className="mb-6">
+            <div className="space-y-4">
               {originalPrice && originalPrice > finalPrice && (
-                <p className="text-lg text-gray-500 line-through mb-1">
+                <p className="text-xl text-muted-foreground line-through">
                   {new Intl.NumberFormat('tr-TR', {
                     style: 'currency',
                     currency: 'TRY',
                   }).format(originalPrice)}
                 </p>
               )}
-              <p className="text-3xl font-bold text-primary mb-2">
-                {new Intl.NumberFormat('tr-TR', {
-                  style: 'currency',
-                  currency: 'TRY',
-                }).format(finalPrice)}
-              </p>
-              {product.campaign && campaignDiscount > 0 && (
-                <div className="mb-2">
-                  <span className="inline-block bg-red-500 text-white px-3 py-1 rounded text-sm font-semibold">
+              <div className="flex items-baseline gap-3 flex-wrap">
+                <p className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                  {new Intl.NumberFormat('tr-TR', {
+                    style: 'currency',
+                    currency: 'TRY',
+                  }).format(finalPrice)}
+                </p>
+                {product.campaign && campaignDiscount > 0 && (
+                  <Badge className="bg-gradient-to-r from-accent to-accent-light dark:hover:shadow-neon-pink text-white text-sm px-3 py-1 border border-accent/50">
                     🎉 {product.campaign.title}
                     {product.campaign.discountPercent && ` - %${product.campaign.discountPercent} İndirim`}
                     {product.campaign.discountAmount && ` - ${product.campaign.discountAmount}₺ İndirim`}
-                  </span>
-                </div>
-              )}
-              <p className="text-sm text-gray-600">
-                Stok: {product.stock > 0 ? `${product.stock} adet` : 'Stokta yok'}
-              </p>
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-4">
+                <p className={`text-sm font-semibold ${product.stock > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  {product.stock > 0 ? `✓ Stokta var (${product.stock} adet)` : '✗ Stokta yok'}
+                </p>
+              </div>
             </div>
 
             <ProductDetailClient product={{
@@ -186,34 +179,96 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             }} />
 
             {product.description && (
-              <Card className="mt-8">
+              <Card className="border border-border dark:border-dark-border bg-card dark:bg-dark-card/50 backdrop-blur-sm rounded-2xl">
                 <CardHeader>
-                  <CardTitle>Açıklama</CardTitle>
+                  <CardTitle className="text-xl text-primary">Ürün Açıklaması</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div
-                    className="prose max-w-none"
+                    className="prose max-w-none prose-headings:font-bold prose-headings:text-foreground dark:prose-headings:text-white prose-p:text-muted-foreground dark:prose-p:text-gray-300 prose-strong:text-foreground dark:prose-strong:text-white prose-ul:text-muted-foreground dark:prose-ul:text-gray-300 prose-ol:text-muted-foreground dark:prose-ol:text-gray-300 prose-a:text-primary hover:prose-a:text-accent"
                     dangerouslySetInnerHTML={{ __html: product.description }}
                   />
                 </CardContent>
               </Card>
             )}
 
-            <Card className="mt-4">
+            <Card className="border border-border dark:border-dark-border bg-card dark:bg-dark-card/50 backdrop-blur-sm rounded-2xl">
               <CardHeader>
-                <CardTitle>Teslimat & İade</CardTitle>
+                <CardTitle className="text-xl text-primary">Teslimat & İade</CardTitle>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2 text-sm">
-                  <li>• Aynı gün kargo (saat 15:00'a kadar)</li>
-                  <li>• Ücretsiz kargo (200₺ üzeri)</li>
-                  <li>• 14 gün içinde iade garantisi</li>
-                  <li>• Faturalı ürünler</li>
+                <ul className="space-y-3 text-sm text-muted-foreground dark:text-gray-300">
+                  <li className="flex items-center gap-2">
+                    <span className="text-green-600 dark:text-green-400 font-bold">✓</span>
+                    <span>Aynı gün kargo (saat 15:00'a kadar)</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-green-600 dark:text-green-400 font-bold">✓</span>
+                    <span>Ücretsiz kargo (200₺ üzeri)</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-green-600 dark:text-green-400 font-bold">✓</span>
+                    <span>14 gün içinde iade garantisi</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-green-600 dark:text-green-400 font-bold">✓</span>
+                    <span>Faturalı ürünler</span>
+                  </li>
                 </ul>
               </CardContent>
             </Card>
           </div>
         </div>
+
+        {/* Related Products */}
+        {relatedProducts.length > 0 && (
+          <section className="mt-16">
+            <h2 className="text-2xl md:text-3xl font-bold mb-8 text-foreground">Benzer Ürünler</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6">
+              {relatedProducts.map((relatedProduct) => {
+                let relatedFinalPrice = relatedProduct.salePrice || relatedProduct.price
+                let relatedOriginalPrice = relatedProduct.salePrice ? relatedProduct.price : null
+                let relatedHasCampaign = false
+
+                if (relatedProduct.campaign && relatedProduct.campaign.isActive) {
+                  const now = new Date()
+                  const startDate = new Date(relatedProduct.campaign.startDate)
+                  const endDate = new Date(relatedProduct.campaign.endDate)
+                  
+                  if (now >= startDate && now <= endDate) {
+                    relatedHasCampaign = true
+                    if (relatedProduct.campaign.discountPercent) {
+                      relatedOriginalPrice = relatedFinalPrice
+                      relatedFinalPrice = relatedFinalPrice - (relatedFinalPrice * relatedProduct.campaign.discountPercent / 100)
+                    } else if (relatedProduct.campaign.discountAmount) {
+                      relatedOriginalPrice = relatedFinalPrice
+                      relatedFinalPrice = Math.max(0, relatedFinalPrice - relatedProduct.campaign.discountAmount)
+                    }
+                  }
+                }
+
+                return (
+                  <ProductCard
+                    key={relatedProduct.id}
+                    product={{
+                      id: relatedProduct.id,
+                      name: relatedProduct.name,
+                      slug: relatedProduct.slug,
+                      price: relatedProduct.price,
+                      salePrice: relatedProduct.salePrice,
+                      images: relatedProduct.images,
+                      stock: relatedProduct.stock,
+                    }}
+                    finalPrice={relatedFinalPrice}
+                    originalPrice={relatedOriginalPrice}
+                    hasCampaign={relatedHasCampaign}
+                    hasSale={!!relatedProduct.salePrice}
+                  />
+                )
+              })}
+            </div>
+          </section>
+        )}
       </div>
     </>
   )
