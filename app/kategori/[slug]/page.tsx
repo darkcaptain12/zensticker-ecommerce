@@ -61,13 +61,7 @@ export default async function CategoryPage({
       },
       include: {
         images: { where: { isMain: true }, take: 1 },
-        campaign: {
-          where: {
-            isActive: true,
-            startDate: { lte: new Date() },
-            endDate: { gte: new Date() },
-          },
-        },
+        campaign: true,
       },
       orderBy,
       skip: (currentPage - 1) * itemsPerPage,
@@ -166,13 +160,21 @@ export default async function CategoryPage({
                 // Check for active campaign
                 let hasCampaign = false
                 let campaignPrice = price
-                if (product.campaign && product.campaign.length > 0) {
-                  const activeCampaign = product.campaign[0]
-                  hasCampaign = true
-                  if (activeCampaign.discountPercent) {
-                    campaignPrice = price - (price * activeCampaign.discountPercent / 100)
-                  } else if (activeCampaign.discountAmount) {
-                    campaignPrice = Math.max(0, price - activeCampaign.discountAmount)
+                if (product.campaign) {
+                  const now = new Date()
+                  const isActive = 
+                    product.campaign.isActive &&
+                    product.campaign.startDate <= now &&
+                    product.campaign.endDate >= now
+                  
+                  if (isActive) {
+                    const activeCampaign = product.campaign
+                    hasCampaign = true
+                    if (activeCampaign.discountPercent) {
+                      campaignPrice = price - (price * activeCampaign.discountPercent / 100)
+                    } else if (activeCampaign.discountAmount) {
+                      campaignPrice = Math.max(0, price - activeCampaign.discountAmount)
+                    }
                   }
                 }
 
