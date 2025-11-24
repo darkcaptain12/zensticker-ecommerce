@@ -113,9 +113,9 @@ export function CampaignForm({ campaign, categories = [], products = [] }: Campa
     setUploadProgress(0)
 
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('folder', 'products')
+      const uploadFormData = new FormData()
+      uploadFormData.append('file', file)
+      uploadFormData.append('folder', 'products')
 
       // Simulate progress
       const progressInterval = setInterval(() => {
@@ -130,7 +130,7 @@ export function CampaignForm({ campaign, categories = [], products = [] }: Campa
 
       const response = await fetch('/api/admin/upload', {
         method: 'POST',
-        body: formData,
+        body: uploadFormData,
       })
 
       clearInterval(progressInterval)
