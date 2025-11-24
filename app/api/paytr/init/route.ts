@@ -42,6 +42,10 @@ export async function POST(request: NextRequest) {
 
     // Create order
     const orderNumber = generateOrderNumber()
+    
+    // Generate alphanumeric merchant_oid for PayTR (only letters and numbers, no special characters)
+    const merchant_oid = `ORD${Date.now()}${Math.floor(Math.random() * 10000)}`
+    
     const order = await prisma.order.create({
       data: {
         orderNumber,
@@ -83,11 +87,11 @@ export async function POST(request: NextRequest) {
       ])
     )
 
-    // Initialize PayTR payment
+    // Initialize PayTR payment with alphanumeric merchant_oid
     const paytrResponse = await initPayTRPayment({
       email: customerEmail,
       paymentAmount: total,
-      merchantOid: orderNumber,
+      merchantOid: merchant_oid, // Use alphanumeric merchant_oid instead of orderNumber
       userIp,
       userBasket: basket,
       userName: customerName.substring(0, 64), // PayTR limit
@@ -96,10 +100,14 @@ export async function POST(request: NextRequest) {
     })
 
     if (paytrResponse.status === 'success' && paytrResponse.token) {
-      // Update order with PayTR token
+      // Update order with PayTR token and merchant_oid
       await prisma.order.update({
         where: { id: order.id },
-        data: { paytrToken: paytrResponse.token },
+        data: { 
+          paytrToken: paytrResponse.token,
+          // Store merchant_oid in paytrRefCode field for callback lookup
+          paytrRefCode: merchant_oid,
+        },
       })
 
       const iframeUrl = `https://www.paytr.com/odeme/guvenli/${paytrResponse.token}`

@@ -22,9 +22,9 @@ export async function POST(request: NextRequest) {
       return new NextResponse('Missing parameters', { status: 400 })
     }
 
-    // Find order
-    const order = await prisma.order.findUnique({
-      where: { orderNumber: merchantOid },
+    // Find order by merchant_oid (stored in paytrRefCode field)
+    const order = await prisma.order.findFirst({
+      where: { paytrRefCode: merchantOid },
     })
 
     if (!order) {
@@ -57,7 +57,8 @@ export async function POST(request: NextRequest) {
         where: { id: order.id },
         data: {
           status: 'PAID',
-          paytrRefCode: paymentId || null,
+          // Keep merchant_oid in paytrRefCode, add payment_id to paytrToken or notes
+          paytrToken: paymentId || order.paytrToken || null,
         },
       })
       console.log(`PayTR callback: Payment successful for order ${merchantOid}`)
