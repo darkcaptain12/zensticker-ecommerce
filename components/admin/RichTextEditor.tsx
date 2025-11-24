@@ -1,6 +1,5 @@
 'use client'
 
-import { useRef } from 'react'
 import dynamic from 'next/dynamic'
 
 // Dynamically import ReactQuill to avoid SSR issues
@@ -15,7 +14,6 @@ interface RichTextEditorProps {
 }
 
 export function RichTextEditor({ value, onChange, placeholder = 'İçerik girin...' }: RichTextEditorProps) {
-  const quillRef = useRef<any>(null)
 
   const modules = {
     toolbar: [
@@ -42,7 +40,6 @@ export function RichTextEditor({ value, onChange, placeholder = 'İçerik girin.
   return (
     <div className="rich-text-editor">
       <ReactQuill
-        ref={quillRef}
         theme="snow"
         value={value}
         onChange={onChange}
