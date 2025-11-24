@@ -115,43 +115,48 @@ export async function POST(req: NextRequest) {
     const user_phone = customerPhone.replace(/\s/g, '')
 
     // 7) HASH (paytr_token) hesabı - PayTR dokümanına göre
+    // PayTR PHP örneği: base64_encode(hash_hmac('sha256', $hash_str.$merchant_salt, $merchant_key, true))
     // Hash string: merchant_id + user_ip + merchant_oid + email + payment_amount + user_basket + no_installment + max_installment + currency + test_mode
-    // Sonra merchant_salt eklenir ve HMAC-SHA256 ile hash'lenir
+    // Sonra merchant_salt eklenir ve HMAC-SHA256 ile hash'lenir (binary output, sonra base64)
     const hashStr =
-      merchant_id +
-      user_ip +
-      merchant_oid +
-      customerEmail +
-      payment_amount +
-      user_basket +
-      no_installment +
-      max_installment +
-      currency +
-      test_mode
+      String(merchant_id) +
+      String(user_ip) +
+      String(merchant_oid) +
+      String(customerEmail) +
+      String(payment_amount) +
+      String(user_basket) +
+      String(no_installment) +
+      String(max_installment) +
+      String(currency) +
+      String(test_mode)
 
-    // PayTR hash calculation: HMAC-SHA256(hashStr + merchant_salt, merchant_key)
+    // PayTR hash calculation: base64_encode(hash_hmac('sha256', hashStr + merchant_salt, merchant_key, true))
+    // Node.js'te: createHmac zaten binary output verir, digest('base64') ile base64'e çeviririz
     const paytr_token = crypto
       .createHmac('sha256', merchant_key)
-      .update(hashStr + merchant_salt)
+      .update(hashStr + merchant_salt, 'utf8')
       .digest('base64')
 
-    // Debug logging (remove in production)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('PayTR Hash Debug:', {
-        merchant_id,
-        user_ip,
-        merchant_oid,
-        email: customerEmail,
-        payment_amount,
-        user_basket_length: user_basket.length,
-        no_installment,
-        max_installment,
-        currency,
-        test_mode,
-        hashStr_length: hashStr.length,
-        paytr_token_length: paytr_token.length,
-      })
-    }
+    // Debug logging for troubleshooting
+    console.log('PayTR Hash Calculation Debug:', {
+      merchant_id,
+      user_ip,
+      merchant_oid,
+      email: customerEmail,
+      payment_amount,
+      user_basket: user_basket.substring(0, 100) + '...',
+      user_basket_length: user_basket.length,
+      no_installment,
+      max_installment,
+      currency,
+      test_mode,
+      hashStr_preview: hashStr.substring(0, 150) + '...',
+      hashStr_length: hashStr.length,
+      merchant_salt_length: merchant_salt.length,
+      merchant_key_length: merchant_key.length,
+      paytr_token_preview: paytr_token.substring(0, 50) + '...',
+      paytr_token_length: paytr_token.length,
+    })
 
     // 8) PayTR'a POST isteği
     // PayTR requires all values as strings
