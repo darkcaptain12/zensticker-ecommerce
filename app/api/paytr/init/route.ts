@@ -1,7 +1,9 @@
+export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
+import axios from 'axios'
 
 export async function POST(request: NextRequest) {
   try {
@@ -121,15 +123,17 @@ export async function POST(request: NextRequest) {
       debug_on: '1',
     })
 
-    const response = await fetch('https://www.paytr.com/odeme/api/get-token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: postData.toString(),
-    })
+    const response = await axios.post(
+      'https://www.paytr.com/odeme/api/get-token',
+      postData.toString(),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      }
+    )
 
-    const result = await response.json()
+    const result = response.data
 
     if (result.status !== 'success') {
       console.error('PayTR get-token error:', result)
