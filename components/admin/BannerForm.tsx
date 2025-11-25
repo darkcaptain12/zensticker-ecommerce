@@ -69,11 +69,12 @@ export function BannerForm({ banner, availableBanners }: BannerFormProps) {
         router.push('/admin/banner')
         router.refresh()
       } else {
-        const data = await response.json()
-        alert(data.error || 'İşlem başarısız')
+        const errorData = await response.json().catch(() => ({ error: 'İşlem başarısız' }))
+        alert(errorData.error || 'İşlem başarısız')
       }
-    } catch (error) {
-      alert('Bir hata oluştu')
+    } catch (error: any) {
+      console.error('Banner submit error:', error)
+      alert(error.message || 'Bir hata oluştu')
     } finally {
       setLoading(false)
     }
@@ -111,7 +112,18 @@ export function BannerForm({ banner, availableBanners }: BannerFormProps) {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || 'Yükleme başarısız')
+        const errorMessage = error.error || 'Yükleme başarısız'
+        
+        // Vercel/serverless ortamında dosya yükleme hatası için özel mesaj
+        if (error.requiresCloudStorage || errorMessage.includes('read-only') || errorMessage.includes('EROFS')) {
+          throw new Error(
+            'Vercel gibi serverless ortamlarda dosya yükleme desteklenmiyor.\n\n' +
+            'Lütfen "Manuel URL Gir" seçeneğini kullanarak video URL\'si girin.\n\n' +
+            'Video dosyanızı bir cloud storage servisine (Cloudinary, AWS S3, vb.) yükleyip URL\'sini buraya yapıştırabilirsiniz.'
+          )
+        }
+        
+        throw new Error(errorMessage)
       }
 
       const data = await response.json()

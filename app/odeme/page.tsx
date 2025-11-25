@@ -14,48 +14,59 @@ import { useRouter } from 'next/navigation'
 
 export default function CheckoutPage() {
   const { data: session } = useSession()
-  const { items, total, clearCart, campaignDiscount, subtotal, finalTotal } = useCart()
+  const { items, finalTotal, campaignDiscount, subtotal } = useCart()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [showIframe, setShowIframe] = useState(false)
+  const [iframeUrl, setIframeUrl] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     customerName: session?.user?.name || '',
     customerEmail: session?.user?.email || '',
     customerPhone: '',
     customerAddress: '',
-    notes: '',
   })
 
-  if (items.length === 0) {
+  // Sepet boşsa yönlendir
+  if (items.length === 0 && !showIframe) {
     router.push('/sepet')
     return null
   }
+
+  // Kargo ücreti hesapla
+  const shippingCost = finalTotal >= 200 ? 0 : 25
+  const total = finalTotal + shippingCost
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
     try {
+      // PayTR init endpoint'ine istek at
       const response = await fetch('/api/paytr/init', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...formData,
-          items,
-          total: finalTotal + (finalTotal >= 200 ? 0 : 25),
-          campaignDiscount: campaignDiscount ? {
-            id: campaignDiscount.id,
-            discountAmount: campaignDiscount.calculatedDiscount,
-          } : null,
+          customerName: formData.customerName,
+          customerEmail: formData.customerEmail,
+          customerPhone: formData.customerPhone,
+          customerAddress: formData.customerAddress,
+          items: items.map((item) => ({
+            name: item.name,
+            price: item.salePrice || item.price,
+            quantity: item.quantity,
+          })),
+          total,
         }),
       })
 
       const data = await response.json()
 
-      if (data.status === 'ok' && data.token) {
-        // Redirect to PayTR iframe
-        window.location.href = `/odeme/paytr?token=${data.token}&orderNumber=${data.orderNumber}`
+      if (data.status === 'success' && data.iframeUrl) {
+        // Iframe'i göster
+        setIframeUrl(data.iframeUrl)
+        setShowIframe(true)
       } else {
-        alert(data.message || data.error || 'Ödeme başlatılamadı')
+        alert(data.reason || 'Ödeme başlatılamadı')
         setLoading(false)
       }
     } catch (error) {
@@ -65,6 +76,26 @@ export default function CheckoutPage() {
     }
   }
 
+  // Iframe gösteriliyorsa sadece iframe'i göster
+  if (showIframe && iframeUrl) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-8">Ödeme</h1>
+        <Card>
+          <CardContent className="p-0">
+            <iframe
+              src={iframeUrl}
+              className="w-full"
+              style={{ minHeight: '700px', border: 'none' }}
+              title="PayTR Ödeme"
+            />
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Normal form görünümü
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8">Ödeme</h1>
@@ -125,17 +156,6 @@ export default function CheckoutPage() {
                     rows={4}
                   />
                 </div>
-                <div>
-                  <Label htmlFor="notes">Notlar (Opsiyonel)</Label>
-                  <Textarea
-                    id="notes"
-                    value={formData.notes}
-                    onChange={(e) =>
-                      setFormData({ ...formData, notes: e.target.value })
-                    }
-                    rows={3}
-                  />
-                </div>
               </CardContent>
             </Card>
           </div>
@@ -187,7 +207,7 @@ export default function CheckoutPage() {
                   <div className="border-t pt-2">
                     <div className="flex justify-between font-bold text-lg">
                       <span>Toplam</span>
-                      <span>{formatPrice(finalTotal + (finalTotal >= 200 ? 0 : 25))}</span>
+                      <span>{formatPrice(total)}</span>
                     </div>
                   </div>
                 </div>
@@ -207,4 +227,3 @@ export default function CheckoutPage() {
     </div>
   )
 }
-

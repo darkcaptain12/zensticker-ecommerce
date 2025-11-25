@@ -5,6 +5,7 @@ import { formatPrice } from '@/lib/utils'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { RevenueFilter } from '@/components/admin/RevenueFilter'
+import { CleanupOrdersButton } from '@/components/admin/CleanupOrdersButton'
 
 export default async function AdminDashboard() {
   const now = new Date()
@@ -188,11 +189,14 @@ export default async function AdminDashboard() {
                 <Activity className="h-5 w-5 text-primary" />
                 Son Siparişler
               </CardTitle>
-              <Link href="/admin/siparisler">
-                <Button variant="outline" size="sm">
-                  Tümünü Gör
-                </Button>
-              </Link>
+              <div className="flex gap-2">
+                <CleanupOrdersButton />
+                <Link href="/admin/siparisler">
+                  <Button variant="outline" size="sm">
+                    Tümünü Gör
+                  </Button>
+                </Link>
+              </div>
             </div>
           </CardHeader>
           <CardContent>

@@ -26,7 +26,7 @@ export function BannerSlider({ banners }: BannerSliderProps) {
 
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % banners.length)
-    }, 5000) // 5 saniyede bir otomatik değiş
+    }, 10000) // 10 saniyede bir otomatik değiş
 
     return () => clearInterval(interval)
   }, [banners.length])

@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { formatPrice } from '@/lib/utils'
 import { Truck } from 'lucide-react'
+import { getCarrierName } from '@/lib/shipping'
 
 export default async function ProfilePage() {
   const session = await getServerSession(authOptions)
@@ -101,13 +102,38 @@ export default async function ProfilePage() {
                           {order.items.length} ürün
                         </p>
                       </div>
+                      {/* Kargo Bilgileri */}
+                      {order.shippingCarrier && order.trackingNumber ? (
+                        <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                          <p className="text-sm text-muted-foreground mb-1">
+                            Kargo Firması: <span className="font-semibold text-foreground">{getCarrierName(order.shippingCarrier)}</span>
+                          </p>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            Takip No: <span className="font-mono font-semibold text-primary">{order.trackingNumber}</span>
+                          </p>
+                          <Link href={`/kargo-takip/${order.id}`}>
+                            <Button variant="default" size="sm" className="w-full">
+                              <Truck className="h-4 w-4 mr-2" />
+                              Kargomu Takip Et
+                            </Button>
+                          </Link>
+                        </div>
+                      ) : (
+                        <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg">
+                          <p className="text-sm text-muted-foreground italic">
+                            Kargo bilgisi henüz eklenmedi.
+                          </p>
+                        </div>
+                      )}
+
                       <div className="flex gap-2 mt-3">
                         <Link href={`/siparis-tesekkur/${order.orderNumber}`}>
                           <Button variant="outline" size="sm">
                             Detayları Gör
                           </Button>
                         </Link>
-                        {order.cargoTrackingNo && (
+                        {/* Legacy tracking link */}
+                        {order.cargoTrackingNo && !order.shippingCarrier && (
                           <Link href={`/kargo-takip?trackingNumber=${order.cargoTrackingNo}`}>
                             <Button variant="default" size="sm">
                               <Truck className="h-4 w-4 mr-2" />

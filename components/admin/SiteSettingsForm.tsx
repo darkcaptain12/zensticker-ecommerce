@@ -41,20 +41,31 @@ export function SiteSettingsForm({ settings }: { settings: SiteSettings | null |
     setLoading(true)
 
     try {
+      // Boş string'leri null'a çevir (Prisma için)
+      const dataToSend = {
+        ...formData,
+        headerLogoPath: formData.headerLogoPath || null,
+        footerLogoPath: formData.footerLogoPath || null,
+        headerMarqueeText: formData.headerMarqueeText || null,
+        videoBackgroundUrl: formData.videoBackgroundUrl || null,
+      }
+
       const response = await fetch('/api/admin/site-settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(dataToSend),
       })
 
       if (response.ok) {
         router.refresh()
         alert('Ayarlar kaydedildi')
       } else {
-        alert('Kaydetme başarısız')
+        const errorData = await response.json().catch(() => ({ error: 'Kaydetme başarısız' }))
+        alert(errorData.error || 'Kaydetme başarısız')
       }
-    } catch (error) {
-      alert('Bir hata oluştu')
+    } catch (error: any) {
+      console.error('Submit error:', error)
+      alert(error.message || 'Bir hata oluştu')
     } finally {
       setLoading(false)
     }
@@ -92,7 +103,18 @@ export function SiteSettingsForm({ settings }: { settings: SiteSettings | null |
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || 'Yükleme başarısız')
+        const errorMessage = error.error || 'Yükleme başarısız'
+        
+        // Vercel/serverless ortamında dosya yükleme hatası için özel mesaj
+        if (error.requiresCloudStorage || errorMessage.includes('read-only') || errorMessage.includes('EROFS')) {
+          throw new Error(
+            'Vercel gibi serverless ortamlarda dosya yükleme desteklenmiyor.\n\n' +
+            'Lütfen "Manuel URL Gir" seçeneğini kullanarak video URL\'si girin.\n\n' +
+            'Video dosyanızı bir cloud storage servisine (Cloudinary, AWS S3, vb.) yükleyip URL\'sini buraya yapıştırabilirsiniz.'
+          )
+        }
+        
+        throw new Error(errorMessage)
       }
 
       const data = await response.json()

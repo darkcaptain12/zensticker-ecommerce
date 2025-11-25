@@ -13,20 +13,30 @@ export async function POST(request: NextRequest) {
   try {
     const data = await request.json()
 
+    // Boş string'leri null'a çevir
+    const cleanedData = {
+      ...data,
+      headerLogoPath: data.headerLogoPath || null,
+      footerLogoPath: data.footerLogoPath || null,
+      headerMarqueeText: data.headerMarqueeText || null,
+      videoBackgroundUrl: data.videoBackgroundUrl || null,
+    }
+
     await prisma.siteSettings.upsert({
       where: { id: '1' },
-      update: data,
+      update: cleanedData,
       create: {
         id: '1',
-        ...data,
+        ...cleanedData,
       },
     })
 
     return NextResponse.json({ success: true })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Update site settings error:', error)
+    const errorMessage = error.message || 'Failed to update settings'
     return NextResponse.json(
-      { error: 'Failed to update settings' },
+      { error: errorMessage },
       { status: 500 }
     )
   }

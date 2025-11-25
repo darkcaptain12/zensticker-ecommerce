@@ -40,6 +40,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check if we're in Vercel (read-only filesystem)
+    const isVercel = process.env.VERCEL === '1' || process.env.VERCEL_ENV
+
+    if (isVercel) {
+      // Vercel'de dosya sistemi read-only, bu yüzden hata mesajı ver
+      return NextResponse.json(
+        { 
+          error: 'Vercel ortamında dosya yükleme desteklenmiyor. Lütfen Vercel Blob Storage veya başka bir cloud storage servisi kullanın. Şu anda sadece manuel URL girişi kullanılabilir.',
+          requiresCloudStorage: true
+        },
+        { status: 503 }
+      )
+    }
+
     // Generate unique filename
     const timestamp = Date.now()
     const originalName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
@@ -65,7 +79,22 @@ export async function POST(request: NextRequest) {
     const filePath = path.join(finalUploadDir, fileName)
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
-    await writeFile(filePath, buffer)
+    
+    try {
+      await writeFile(filePath, buffer)
+    } catch (writeError: any) {
+      // Eğer dosya yazma hatası alırsak (read-only filesystem), daha açıklayıcı hata ver
+      if (writeError.code === 'EROFS' || writeError.message?.includes('read-only')) {
+        return NextResponse.json(
+          { 
+            error: 'Dosya sistemi salt okunur. Vercel gibi serverless ortamlarda dosya yükleme desteklenmiyor. Lütfen "Manuel URL Gir" seçeneğini kullanarak video URL\'si girin.',
+            requiresCloudStorage: true
+          },
+          { status: 503 }
+        )
+      }
+      throw writeError
+    }
 
     // Return the public URL
     const publicUrl = `/${actualFolder}/${fileName}`
@@ -79,6 +108,18 @@ export async function POST(request: NextRequest) {
     })
   } catch (error: any) {
     console.error('Upload error:', error)
+    
+    // Read-only filesystem hatası için özel mesaj
+    if (error.code === 'EROFS' || error.message?.includes('read-only')) {
+      return NextResponse.json(
+        { 
+          error: 'Dosya sistemi salt okunur. Vercel gibi serverless ortamlarda dosya yükleme desteklenmiyor. Lütfen "Manuel URL Gir" seçeneğini kullanarak video URL\'si girin.',
+          requiresCloudStorage: true
+        },
+        { status: 503 }
+      )
+    }
+    
     return NextResponse.json(
       { error: error.message || 'Failed to upload file' },
       { status: 500 }

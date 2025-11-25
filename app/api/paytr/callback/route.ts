@@ -1,12 +1,21 @@
 export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { verifyPayTRCallback } from '@/lib/paytr'
 
+/**
+ * PayTR Callback Endpoint
+ * 
+ * PayTR ödeme sonucunu bu endpoint'e POST olarak gönderir.
+ * 
+ * TODO: 
+ * - Hash doğrulama yapılacak
+ * - Sipariş durumu güncellenecek (PAID veya CANCELLED)
+ * - merchant_oid ile sipariş bulunacak
+ * - Prisma ile order.update() yapılacak
+ */
 export async function POST(request: NextRequest) {
   try {
-    // PayTR sends data as form-urlencoded
+    // PayTR form-urlencoded olarak gönderir
     const formData = await request.formData()
     
     const merchantOid = formData.get('merchant_oid') as string
@@ -14,76 +23,23 @@ export async function POST(request: NextRequest) {
     const totalAmount = formData.get('total_amount') as string
     const hash = formData.get('hash') as string
     const paymentId = formData.get('payment_id') as string
-    const failedReasonCode = formData.get('failed_reason_code') as string
-    const failedReasonMessage = formData.get('failed_reason_message') as string
 
-    if (!merchantOid || !status || !totalAmount || !hash) {
-      console.error('PayTR callback: Missing required parameters')
-      return new NextResponse('Missing parameters', { status: 400 })
-    }
-
-    // Find order by merchant_oid (stored in paytrRefCode field)
-    const order = await prisma.order.findFirst({
-      where: { paytrRefCode: merchantOid },
-    })
-
-    if (!order) {
-      console.error(`PayTR callback: Order not found - ${merchantOid}`)
-      return new NextResponse('Order not found', { status: 404 })
-    }
-
-    // Verify hash according to PayTR documentation
-    // hash = HMAC-SHA256(merchant_salt + merchant_oid + status + total_amount, merchant_key)
-    const isValid = verifyPayTRCallback(
+    console.log('PayTR Callback received:', {
       merchantOid,
       status,
       totalAmount,
-      hash
-    )
+      paymentId,
+    })
 
-    if (!isValid) {
-      console.error('PayTR callback: Invalid hash verification', {
-        merchantOid,
-        status,
-        totalAmount,
-      })
-      // Still return OK to PayTR to prevent retries, but don't update order
-      return new NextResponse('OK')
-    }
+    // TODO: Hash doğrulama
+    // TODO: Sipariş bulma ve güncelleme
+    // TODO: Order status = 'PAID' veya 'CANCELLED' olarak güncelle
 
-    // Update order status based on payment result
-    if (status === 'success') {
-      await prisma.order.update({
-        where: { id: order.id },
-        data: {
-          status: 'PAID',
-          // Keep merchant_oid in paytrRefCode, add payment_id to paytrToken or notes
-          paytrToken: paymentId || order.paytrToken || null,
-        },
-      })
-      console.log(`PayTR callback: Payment successful for order ${merchantOid}`)
-    } else {
-      // Payment failed
-      await prisma.order.update({
-        where: { id: order.id },
-        data: {
-          status: 'CANCELLED',
-          notes: order.notes 
-            ? `${order.notes}\n\nÖdeme başarısız: ${failedReasonMessage || failedReasonCode || 'Bilinmeyen hata'}`
-            : `Ödeme başarısız: ${failedReasonMessage || failedReasonCode || 'Bilinmeyen hata'}`,
-        },
-      })
-      console.log(`PayTR callback: Payment failed for order ${merchantOid}`, {
-        failedReasonCode,
-        failedReasonMessage,
-      })
-    }
-
-    // PayTR expects plain text "OK" response
+    // PayTR her zaman "OK" bekler
     return new NextResponse('OK')
   } catch (error) {
     console.error('PayTR callback error:', error)
-    // Still return OK to prevent PayTR from retrying
+    // PayTR'a hata olsa bile "OK" dön (retry'i önlemek için)
     return new NextResponse('OK')
   }
 }

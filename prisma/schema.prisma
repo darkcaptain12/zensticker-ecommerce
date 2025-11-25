@@ -119,6 +119,9 @@ model Order {
   shipmentStatus  String?
   shipmentLabelUrl String?
   shipmentLastSync DateTime?
+  shippingCarrier String?   // e.g. "yurtici", "aras", "mng", "surat", "ptt"
+  trackingNumber  String?   // raw tracking code given by the carrier
+  trackingUrl     String?   // fully generated tracking URL we will embed in an iframe
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 

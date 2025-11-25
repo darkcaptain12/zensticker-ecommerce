@@ -10,6 +10,8 @@ import { BulkUpdateStatus } from '@/components/admin/BulkUpdateStatus'
 import { UpdateOrderStatusButton } from '@/components/admin/UpdateOrderStatusButton'
 import { OrderSelectionProvider } from '@/components/admin/OrderSelectionContext'
 import { OrderCheckbox } from '@/components/admin/OrderCheckbox'
+import { ShippingInfoForm } from '@/components/admin/ShippingInfoForm'
+import { getCarrierName } from '@/lib/shipping'
 import { Package, User, Mail, Phone, MapPin, Truck, Calendar, DollarSign, FileText, ExternalLink } from 'lucide-react'
 import Image from 'next/image'
 
@@ -208,7 +210,49 @@ export default async function AdminOrdersPage() {
                     Kargo Bilgileri
                   </h3>
                   <div className="space-y-3 text-sm">
-                    {/* DHL Shipment Info */}
+                    {/* New Shipping Info (shippingCarrier, trackingNumber, trackingUrl) */}
+                    {order.shippingCarrier && order.trackingNumber ? (
+                      <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                        <p className="text-muted-foreground mb-1 text-xs">Kargo Firması:</p>
+                        <p className="font-semibold text-primary mb-2">
+                          {getCarrierName(order.shippingCarrier)}
+                        </p>
+                        <p className="text-muted-foreground mb-1 text-xs">Takip Numarası:</p>
+                        <p className="font-mono font-semibold text-primary mb-3">
+                          {order.trackingNumber}
+                        </p>
+                        {order.trackingUrl && (
+                          <a
+                            href={`/kargo-takip/${order.id}`}
+                            target="_blank"
+                            className="text-xs text-primary hover:underline flex items-center gap-1 mb-2"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            Kargo Takibi
+                          </a>
+                        )}
+                        <div className="mt-3 pt-3 border-t">
+                          <ShippingInfoForm
+                            orderId={order.id}
+                            currentCarrier={order.shippingCarrier}
+                            currentTrackingNumber={order.trackingNumber}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                        <p className="text-muted-foreground mb-3 text-xs">
+                          Kargo bilgileri henüz eklenmedi
+                        </p>
+                        <ShippingInfoForm
+                          orderId={order.id}
+                          currentCarrier={order.shippingCarrier}
+                          currentTrackingNumber={order.trackingNumber}
+                        />
+                      </div>
+                    )}
+
+                    {/* DHL Shipment Info (Legacy) */}
                     {order.cargoTrackingNo ? (
                       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
                         <p className="text-muted-foreground mb-1 text-xs">DHL Takip Numarası:</p>
