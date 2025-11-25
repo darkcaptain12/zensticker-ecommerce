@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import { FooterLogo } from './FooterLogo'
+import { Instagram, MessageCircle } from 'lucide-react'
 
 export async function Footer() {
   const settings = await prisma.siteSettings.findFirst()
@@ -41,15 +42,24 @@ export async function Footer() {
               Kalite ve güvenilirlik odaklı hizmet anlayışımız.
             </p>
             <div className="flex gap-4 pt-4">
-              <div className="w-10 h-10 rounded-full bg-primary/10 hover:bg-primary/20 hover:shadow-neon-sm border border-primary/20 flex items-center justify-center cursor-pointer transition-all hover:scale-110">
-                <span className="text-sm text-primary">f</span>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-primary/10 hover:bg-primary/20 hover:shadow-neon-sm border border-primary/20 flex items-center justify-center cursor-pointer transition-all hover:scale-110">
-                <span className="text-sm text-primary">in</span>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-primary/10 hover:bg-primary/20 hover:shadow-neon-sm border border-primary/20 flex items-center justify-center cursor-pointer transition-all hover:scale-110">
-                <span className="text-sm text-primary">ig</span>
-              </div>
+              <a
+                href="https://www.instagram.com/zenstickerr"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-full bg-primary/10 hover:bg-primary/20 hover:shadow-neon-sm border border-primary/20 flex items-center justify-center cursor-pointer transition-all hover:scale-110"
+                aria-label="Instagram"
+              >
+                <Instagram className="h-5 w-5 text-primary" />
+              </a>
+              <a
+                href={`https://wa.me/905315661805`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-full bg-primary/10 hover:bg-primary/20 hover:shadow-neon-sm border border-primary/20 flex items-center justify-center cursor-pointer transition-all hover:scale-110"
+                aria-label="WhatsApp"
+              >
+                <MessageCircle className="h-5 w-5 text-primary" />
+              </a>
             </div>
           </div>
 
