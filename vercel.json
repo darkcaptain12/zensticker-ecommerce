@@ -1,9 +1,0 @@
-{
-  "crons": [
-    {
-      "path": "/api/cron/cleanup-orders?secret=CHANGE_THIS_SECRET_IN_ENV",
-      "schedule": "0 2 * * *"
-    }
-  ]
-}
-
