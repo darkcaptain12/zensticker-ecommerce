@@ -15,6 +15,9 @@ export default async function EditProductPage({
         images: {
           orderBy: [{ isMain: 'desc' }, { createdAt: 'asc' }],
         },
+        variants: {
+          orderBy: { createdAt: 'asc' },
+        },
       },
     }),
     prisma.category.findMany({

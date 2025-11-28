@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { formatPrice } from '@/lib/utils'
-import { Truck } from 'lucide-react'
+import { Truck, Heart } from 'lucide-react'
 import { getCarrierName } from '@/lib/shipping'
 
 export default async function ProfilePage() {
@@ -48,7 +48,7 @@ export default async function ProfilePage() {
       <h1 className="text-3xl font-bold mb-8">Profilim</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Hesap Bilgileri</CardTitle>
@@ -60,6 +60,30 @@ export default async function ProfilePage() {
               <p>
                 <strong>E-posta:</strong> {session.user.email}
               </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Menü</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Link href="/profil/favoriler">
+                <Button variant="ghost" className="w-full justify-start">
+                  <Heart className="h-4 w-4 mr-2" />
+                  Favorilerim
+                </Button>
+              </Link>
+              <Link href="/profil/adresler">
+                <Button variant="ghost" className="w-full justify-start">
+                  Adreslerim
+                </Button>
+              </Link>
+              <Link href="/profil/ayarlar">
+                <Button variant="ghost" className="w-full justify-start">
+                  Hesap Ayarları
+                </Button>
+              </Link>
             </CardContent>
           </Card>
         </div>

@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { ShoppingCart, Filter, Grid, List, ArrowLeft, ArrowRight } from 'lucide-react'
 import { AddToCartButton } from '@/components/AddToCartButton'
 import { Breadcrumb } from '@/components/Breadcrumb'
+import { ProductCard } from '@/components/ProductCard'
+import { ProductFilters } from '@/components/ProductFilters'
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -29,10 +31,10 @@ export default async function CategoryPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ sort?: string; page?: string }>
+  searchParams: Promise<{ sort?: string; page?: string; minPrice?: string; maxPrice?: string; inStock?: string; onSale?: string }>
 }) {
   const { slug } = await params
-  const { sort = 'new', page = '1' } = await searchParams
+  const { sort = 'new', page = '1', minPrice, maxPrice, inStock, onSale } = await searchParams
   const currentPage = parseInt(page as string) || 1
   const itemsPerPage = 12
 
@@ -53,26 +55,52 @@ export default async function CategoryPage({
     orderBy = { name: 'asc' }
   }
 
+  // Build where clause with filters
+  const where: any = {
+    categoryId: category.id,
+    isActive: true,
+  }
+
+  if (minPrice) {
+    where.price = { ...where.price, gte: parseFloat(minPrice) }
+  }
+  if (maxPrice) {
+    where.price = { ...where.price, lte: parseFloat(maxPrice) }
+  }
+  if (inStock === 'true') {
+    where.stock = { gt: 0 }
+  }
+  if (onSale === 'true') {
+    where.salePrice = { not: null }
+  }
+
   const [products, totalCount] = await Promise.all([
     prisma.product.findMany({
-      where: {
-        categoryId: category.id,
-        isActive: true,
-      },
+      where,
       include: {
         images: { where: { isMain: true }, take: 1 },
-        campaign: true,
+        category: true,
+        campaign: {
+          where: {
+            isActive: true,
+            startDate: { lte: new Date() },
+            endDate: { gte: new Date() },
+          },
+          select: {
+            id: true,
+            discountPercent: true,
+            discountAmount: true,
+            startDate: true,
+            endDate: true,
+            isActive: true,
+          },
+        },
       },
       orderBy,
       skip: (currentPage - 1) * itemsPerPage,
       take: itemsPerPage,
     }),
-    prisma.product.count({
-      where: {
-        categoryId: category.id,
-        isActive: true,
-      },
-    }),
+    prisma.product.count({ where }),
   ])
 
   const totalPages = Math.ceil(totalCount / itemsPerPage)
@@ -101,8 +129,8 @@ export default async function CategoryPage({
       <div className="container mx-auto px-4 py-8 md:py-12">
         {/* Filters and Sort */}
         <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Filter className="h-5 w-5 text-gray-600" />
+          <div className="flex items-center gap-4">
+            <ProductFilters />
             <span className="text-gray-700 font-medium">
               {totalCount} ürün bulundu
             </span>
@@ -153,76 +181,45 @@ export default async function CategoryPage({
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
               {products.map((product) => {
-                const price = product.salePrice || product.price
-                const originalPrice = product.salePrice ? product.price : null
-                const mainImage = product.images[0]?.url || '/placeholder-product.jpg'
-                
-                // Check for active campaign
+                // Calculate price with campaign
+                let finalPrice = product.salePrice || product.price
+                let originalPrice = product.salePrice ? product.price : null
                 let hasCampaign = false
-                let campaignPrice = price
+
                 if (product.campaign) {
                   const now = new Date()
-                  const isActive = 
-                    product.campaign.isActive &&
-                    product.campaign.startDate <= now &&
-                    product.campaign.endDate >= now
+                  const startDate = new Date(product.campaign.startDate)
+                  const endDate = new Date(product.campaign.endDate)
                   
-                  if (isActive) {
-                    const activeCampaign = product.campaign
+                  if (now >= startDate && now <= endDate) {
                     hasCampaign = true
-                    if (activeCampaign.discountPercent) {
-                      campaignPrice = price - (price * activeCampaign.discountPercent / 100)
-                    } else if (activeCampaign.discountAmount) {
-                      campaignPrice = Math.max(0, price - activeCampaign.discountAmount)
+                    if (product.campaign.discountPercent) {
+                      originalPrice = finalPrice
+                      finalPrice = finalPrice - (finalPrice * product.campaign.discountPercent / 100)
+                    } else if (product.campaign.discountAmount) {
+                      originalPrice = finalPrice
+                      finalPrice = Math.max(0, finalPrice - product.campaign.discountAmount)
                     }
                   }
                 }
 
                 return (
-                  <Card
+                  <ProductCard
                     key={product.id}
-                    className="hover:shadow-xl transition-all duration-300 cursor-pointer h-full flex flex-col group border-2 border-transparent hover:border-primary/20"
-                  >
-                    <Link href={`/urun/${product.slug}`}>
-                      <div className="relative w-full aspect-square overflow-hidden rounded-t-lg bg-gray-100">
-                        <Image
-                          src={mainImage}
-                          alt={product.name}
-                          fill
-                          className="object-cover group-hover:scale-110 transition-transform duration-300"
-                        />
-                        {(product.salePrice || hasCampaign) && (
-                          <span className="absolute top-2 right-2 bg-gradient-to-r from-red-500 to-pink-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
-                            İndirim
-                          </span>
-                        )}
-                      </div>
-                    </Link>
-                    <CardContent className="p-4 flex-1 flex flex-col">
-                      <Link href={`/urun/${product.slug}`}>
-                        <h3 className="font-semibold mb-2 line-clamp-2 hover:text-primary transition min-h-[3rem]">
-                          {product.name}
-                        </h3>
-                      </Link>
-                      <div className="mt-auto space-y-2">
-                        {originalPrice && (
-                          <p className="text-sm text-gray-500 line-through">
-                            {new Intl.NumberFormat('tr-TR', {
-                              style: 'currency',
-                              currency: 'TRY',
-                            }).format(originalPrice)}
-                          </p>
-                        )}
-                        <p className="text-lg font-bold text-primary">
-                          {new Intl.NumberFormat('tr-TR', {
-                            style: 'currency',
-                            currency: 'TRY',
-                          }).format(hasCampaign ? campaignPrice : price)}
-                        </p>
-                        <AddToCartButton product={product} />
-                      </div>
-                    </CardContent>
-                  </Card>
+                    product={{
+                      id: product.id,
+                      name: product.name,
+                      slug: product.slug,
+                      price: product.price,
+                      salePrice: product.salePrice,
+                      images: product.images,
+                      stock: product.stock,
+                    }}
+                    finalPrice={finalPrice}
+                    originalPrice={originalPrice}
+                    hasCampaign={hasCampaign}
+                    hasSale={!!product.salePrice}
+                  />
                 )
               })}
             </div>

@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Edit, Trash2, Search, Filter, Eye } from 'lucide-react'
+import { Edit, Trash2, Search, Filter, Eye, CheckSquare, Square } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 import { DeleteProductButton } from './DeleteProductButton'
+import { BulkProductActions } from './BulkProductActions'
 
 interface Product {
   id: string
@@ -32,6 +33,8 @@ interface ProductTableProps {
 export function ProductTable({ products: initialProducts }: ProductTableProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterActive, setFilterActive] = useState<'all' | 'active' | 'inactive'>('all')
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [selectAll, setSelectAll] = useState(false)
 
   const filteredProducts = initialProducts.filter((product) => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -41,6 +44,29 @@ export function ProductTable({ products: initialProducts }: ProductTableProps) {
       (filterActive === 'inactive' && !product.isActive)
     return matchesSearch && matchesFilter
   })
+
+  const toggleSelect = (productId: string) => {
+    setSelectedIds(prev =>
+      prev.includes(productId)
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId]
+    )
+  }
+
+  const toggleSelectAll = () => {
+    if (selectAll) {
+      setSelectedIds([])
+    } else {
+      setSelectedIds(filteredProducts.map(p => p.id))
+    }
+    setSelectAll(!selectAll)
+  }
+
+  const handleBulkSuccess = () => {
+    setSelectedIds([])
+    setSelectAll(false)
+    window.location.reload()
+  }
 
   return (
     <div className="space-y-4">
@@ -81,17 +107,60 @@ export function ProductTable({ products: initialProducts }: ProductTableProps) {
               </Button>
             </div>
           </div>
+          {selectedIds.length > 0 && (
+            <div className="mt-4 pt-4 border-t flex items-center justify-between">
+              <span className="text-sm text-gray-600">
+                {selectedIds.length} ürün seçildi
+              </span>
+              <BulkProductActions
+                selectedProductIds={selectedIds}
+                onSuccess={handleBulkSuccess}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Products Grid */}
       {filteredProducts.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Select All Checkbox */}
+          <div className="md:col-span-2 lg:col-span-3 flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-900 rounded-lg">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleSelectAll}
+              className="flex items-center gap-2"
+            >
+              {selectAll ? (
+                <CheckSquare className="h-4 w-4" />
+              ) : (
+                <Square className="h-4 w-4" />
+              )}
+              <span className="text-sm">Tümünü Seç</span>
+            </Button>
+          </div>
           {filteredProducts.map((product) => {
             const price = product.salePrice || product.price
             return (
-              <Card key={product.id} className="hover:shadow-lg transition-all duration-300 border-2 hover:border-primary/50">
+              <Card key={product.id} className={`hover:shadow-lg transition-all duration-300 border-2 hover:border-primary/50 ${
+                selectedIds.includes(product.id) ? 'border-primary bg-primary/5' : ''
+              }`}>
                 <CardContent className="p-4">
+                  <div className="flex items-start gap-2 mb-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => toggleSelect(product.id)}
+                      className="h-6 w-6"
+                    >
+                      {selectedIds.includes(product.id) ? (
+                        <CheckSquare className="h-4 w-4 text-primary" />
+                      ) : (
+                        <Square className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
                   <div className="flex gap-4">
                     <div className="w-24 h-24 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden">
                       {product.images[0] ? (

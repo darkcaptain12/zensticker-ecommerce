@@ -31,14 +31,16 @@ enum BannerType {
 }
 
 model User {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   name         String
-  email        String   @unique
+  email        String    @unique
   passwordHash String
-  role         UserRole @default(CUSTOMER)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  role         UserRole  @default(CUSTOMER)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
   orders       Order[]
+  favorites    Favorite[]
+  addresses    Address[]
 
   @@map("users")
 }
@@ -76,6 +78,8 @@ model Product {
   orderItems            OrderItem[]
   customOptions         CustomStickerOption?
   campaignPackages      CampaignPackageProduct[]
+  variants              ProductVariant[]
+  favorites             Favorite[]
   createdAt             DateTime                  @default(now())
   updatedAt             DateTime                  @updatedAt
 
@@ -181,6 +185,8 @@ model SiteSettings {
   videoBackgroundUrl String? // Video Background Section için video URL
   footerTexts       Json?    // { about: string, contact: string, etc }
   seoMetaDefaults   Json?    // { title: string, description: string }
+  socialProofEnabled Boolean  @default(true) // Sosyal kanıt özelliği açık/kapalı
+  mockupEditorEnabled Boolean @default(true) // Mockup editörü açık/kapalı
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -246,5 +252,50 @@ model StaticPage {
   updatedAt   DateTime @updatedAt
 
   @@map("static_pages")
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+  @@map("favorites")
+}
+
+model ProductVariant {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String   // Variant adı (örn: "Renk", "Boyut")
+  value     String   // Variant değeri (örn: "Kırmızı", "XL")
+  price     Float?   // Bu varyant için ek fiyat (opsiyonel)
+  stock     Int      @default(0) // Bu varyant için stok
+  sku       String?  // Variant SKU
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("product_variants")
+}
+
+model Address {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String   // Adres başlığı (örn: "Ev", "İş")
+  fullName    String
+  phone       String
+  address     String   @db.Text
+  city        String
+  district    String
+  postalCode  String?
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("addresses")
 }
 

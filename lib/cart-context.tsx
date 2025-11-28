@@ -36,19 +36,61 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined)
 
+// Cookie helper functions
+function setCookie(name: string, value: string, days: number = 30) {
+  if (typeof document === 'undefined') return
+  const expires = new Date()
+  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000)
+  document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires.toUTCString()};path=/;SameSite=Lax`
+}
+
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null
+  const nameEQ = name + '='
+  const ca = document.cookie.split(';')
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i]
+    while (c.charAt(0) === ' ') c = c.substring(1, c.length)
+    if (c.indexOf(nameEQ) === 0) return decodeURIComponent(c.substring(nameEQ.length, c.length))
+  }
+  return null
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
   const [campaignDiscount, setCampaignDiscount] = useState<CampaignDiscount | null>(null)
 
   useEffect(() => {
+    // Try to load from cookie first (for cross-device compatibility)
+    const cookieCart = getCookie('cart')
+    if (cookieCart) {
+      try {
+        setItems(JSON.parse(cookieCart))
+        return
+      } catch (e) {
+        console.error('Error parsing cookie cart:', e)
+      }
+    }
+    
+    // Fallback to localStorage
     const saved = localStorage.getItem('cart')
     if (saved) {
-      setItems(JSON.parse(saved))
+      try {
+        const parsed = JSON.parse(saved)
+        setItems(parsed)
+        // Sync to cookie
+        setCookie('cart', saved)
+      } catch (e) {
+        console.error('Error parsing localStorage cart:', e)
+      }
     }
   }, [])
 
   useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(items))
+    // Save to both localStorage and cookie
+    const cartData = JSON.stringify(items)
+    localStorage.setItem('cart', cartData)
+    setCookie('cart', cartData)
   }, [items])
 
   // Check for campaign discounts when cart total changes

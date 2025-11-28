@@ -16,11 +16,13 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
+        try {
         const user = await prisma.user.findUnique({
           where: { email: credentials.email }
         })
 
         if (!user) {
+            // Don't reveal if user exists or not (security best practice)
           return null
         }
 
@@ -38,6 +40,10 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.name,
           role: user.role,
+          }
+        } catch (error) {
+          console.error('Auth error:', error)
+          return null
         }
       }
     })

@@ -130,8 +130,28 @@ export function ShipmentTrackingCard({
             </div>
           )}
 
+          {/* Iframe Tracking */}
+          {trackingUrl && (
+            <div className="pt-4 border-t">
+              <p className="text-sm font-semibold mb-2">Kargo Takip</p>
+              <div className="border rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-900">
+                <iframe
+                  src={trackingUrl}
+                  className="w-full h-[500px] border-0"
+                  loading="lazy"
+                  title="Kargo Takip"
+                  sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-2 italic">
+                Kargo durumunuz, resmi kargo firmasının sayfasından çekilmektedir.
+              </p>
+            </div>
+          )}
+
           {/* Butonlar */}
           <div className="flex flex-wrap gap-3 pt-4 border-t">
+            {trackingUrl && (
             <Button
               asChild
               variant="default"
@@ -143,9 +163,11 @@ export function ShipmentTrackingCard({
                 rel="noopener noreferrer"
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
-                DHL'de Takip Et
+                  Yeni Sekmede Aç
               </a>
             </Button>
+            )}
+            {labelUrlFinal && (
             <Button
               asChild
               variant="outline"
@@ -160,6 +182,7 @@ export function ShipmentTrackingCard({
                 Etiketi Gör
               </a>
             </Button>
+            )}
           </div>
         </div>
       </CardContent>

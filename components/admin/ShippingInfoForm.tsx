@@ -85,6 +85,12 @@ export function ShippingInfoForm({
             <SelectItem value="mng">MNG Kargo</SelectItem>
             <SelectItem value="surat">Sürat Kargo</SelectItem>
             <SelectItem value="ptt">PTT Kargo</SelectItem>
+            <SelectItem value="ups">UPS</SelectItem>
+            <SelectItem value="fedex">FedEx</SelectItem>
+            <SelectItem value="dhl">DHL</SelectItem>
+            <SelectItem value="sendeo">Sendeo Kargo</SelectItem>
+            <SelectItem value="horoz">Horoz Kargo</SelectItem>
+            <SelectItem value="tnt">TNT</SelectItem>
           </SelectContent>
         </Select>
       </div>

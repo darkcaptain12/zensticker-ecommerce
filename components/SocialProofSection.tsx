@@ -4,26 +4,51 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { ShoppingCart, MapPin, Clock } from 'lucide-react'
 
-const recentPurchases = [
-  { name: 'Ahmet Y.', location: 'İstanbul', product: 'Kapı Direk Kaplama', time: '2 dakika önce' },
-  { name: 'Zeynep D.', location: 'Ankara', product: 'Özel Tasarım Sticker', time: '5 dakika önce' },
-  { name: 'Mehmet K.', location: 'İzmir', product: 'Premium Sticker Paketi', time: '8 dakika önce' },
-  { name: 'Ayşe Ş.', location: 'Bursa', product: 'Tam Kaplama Seti', time: '12 dakika önce' },
-  { name: 'Can Ö.', location: 'Antalya', product: 'Kişiye Özel Sticker', time: '15 dakika önce' },
-]
+// Generate dynamic recent purchases
+const generateRecentPurchases = () => {
+  const names = ['Ahmet Y.', 'Zeynep D.', 'Mehmet K.', 'Ayşe Ş.', 'Can Ö.', 'Elif M.', 'Burak T.', 'Selin A.']
+  const locations = ['İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Adana', 'Gaziantep', 'Kocaeli']
+  const products = ['Kapı Direk Kaplama', 'Özel Tasarım Sticker', 'Premium Sticker Paketi', 'Tam Kaplama Seti', 'Kişiye Özel Sticker', 'Araç Kaplama', 'Sticker Paketi']
+  const times = ['2 dakika önce', '5 dakika önce', '8 dakika önce', '12 dakika önce', '15 dakika önce', '20 dakika önce', '25 dakika önce', '30 dakika önce']
+  
+  return Array.from({ length: 8 }, (_, i) => ({
+    name: names[Math.floor(Math.random() * names.length)],
+    location: locations[Math.floor(Math.random() * locations.length)],
+    product: products[Math.floor(Math.random() * products.length)],
+    time: times[Math.floor(Math.random() * times.length)],
+  }))
+}
 
-export function SocialProofSection() {
+interface SocialProofSectionProps {
+  enabled?: boolean
+}
+
+export function SocialProofSection({ enabled = true }: SocialProofSectionProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [recentPurchases, setRecentPurchases] = useState(generateRecentPurchases())
 
   useEffect(() => {
+    // Regenerate purchases every 30 seconds
+    const regenerateInterval = setInterval(() => {
+      setRecentPurchases(generateRecentPurchases())
+    }, 30000)
+
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % recentPurchases.length)
-    }, 3000)
+    }, 3000 + Math.random() * 2000) // Random interval between 3-5 seconds
 
-    return () => clearInterval(interval)
-  }, [])
+    return () => {
+      clearInterval(interval)
+      clearInterval(regenerateInterval)
+    }
+  }, [recentPurchases.length])
+
+  if (!enabled) return null
 
   const currentPurchase = recentPurchases[currentIndex]
+  
+  // Generate random sales count for last 24 hours
+  const salesCount = 45 + Math.floor(Math.random() * 30) // 45-75 sales
 
   return (
     <section className="py-12 bg-gray-50/50 dark:bg-dark-card/30 border-y border-border dark:border-primary/20">
@@ -59,7 +84,7 @@ export function SocialProofSection() {
 
           <div className="mt-4 text-center">
             <p className="text-sm text-muted-foreground">
-              <span className="font-semibold text-primary">Son 24 saatte</span> 50+ sipariş tamamlandı
+              <span className="font-semibold text-primary">Son 24 saatte</span> {salesCount}+ sipariş tamamlandı
             </p>
           </div>
         </div>

@@ -4,6 +4,7 @@ import './globals.css'
 import { Header } from '@/components/Header'
 import { Footer } from '@/components/Footer'
 import { WhatsAppButton } from '@/components/WhatsAppButton'
+import { MockupEditorButton } from '@/components/MockupEditorButton'
 import { Providers } from '@/components/Providers'
 import { DynamicStyles } from '@/components/DynamicStyles'
 import { Toaster } from '@/components/ui/toaster'
@@ -11,8 +12,48 @@ import { Toaster } from '@/components/ui/toaster'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
+  title: {
+    default: 'Zen Sticker - Premium Araç Sticker ve Kaplama',
+    template: '%s | Zen Sticker',
+  },
+  description: 'Kaliteli araç sticker, kapı direk kaplama ve kişiye özel sticker çözümleri. 200₺ üzeri ücretsiz kargo.',
+  keywords: ['araç sticker', 'kapı direk kaplama', 'özel tasarım sticker', 'arac kaplama', 'sticker', 'zen sticker'],
+  authors: [{ name: 'Zen Sticker' }],
+  creator: 'Zen Sticker',
+  publisher: 'Zen Sticker',
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  metadataBase: new URL(process.env.NEXTAUTH_URL || 'http://localhost:3000'),
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'tr_TR',
+    url: process.env.NEXTAUTH_URL || 'http://localhost:3000',
+    siteName: 'Zen Sticker',
+    title: 'Zen Sticker - Premium Araç Sticker ve Kaplama',
+    description: 'Kaliteli araç sticker, kapı direk kaplama ve kişiye özel sticker çözümleri.',
+  },
+  twitter: {
+    card: 'summary_large_image',
   title: 'Zen Sticker - Premium Araç Sticker ve Kaplama',
   description: 'Kaliteli araç sticker, kapı direk kaplama ve kişiye özel sticker çözümleri.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
 }
 
 export default function RootLayout({
@@ -29,6 +70,7 @@ export default function RootLayout({
             <Header />
             <main className="flex-1">{children}</main>
             <Footer />
+            <MockupEditorButton />
             <WhatsAppButton />
             <Toaster />
           </div>

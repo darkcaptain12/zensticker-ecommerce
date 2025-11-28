@@ -20,6 +20,8 @@ export async function POST(request: NextRequest) {
       footerLogoPath: data.footerLogoPath || null,
       headerMarqueeText: data.headerMarqueeText || null,
       videoBackgroundUrl: data.videoBackgroundUrl || null,
+      socialProofEnabled: data.socialProofEnabled ?? true,
+      mockupEditorEnabled: data.mockupEditorEnabled ?? true,
     }
 
     await prisma.siteSettings.upsert({

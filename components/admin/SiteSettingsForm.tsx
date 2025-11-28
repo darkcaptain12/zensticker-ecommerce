@@ -18,6 +18,8 @@ interface SiteSettings {
   whatsappPhoneNumber?: string
   headerMarqueeText?: string | null
   videoBackgroundUrl?: string | null
+  socialProofEnabled?: boolean
+  mockupEditorEnabled?: boolean
 }
 
 export function SiteSettingsForm({ settings }: { settings: SiteSettings | null | undefined }) {
@@ -31,6 +33,8 @@ export function SiteSettingsForm({ settings }: { settings: SiteSettings | null |
     whatsappPhoneNumber: settings?.whatsappPhoneNumber || '+905551234567',
     headerMarqueeText: settings?.headerMarqueeText || '200₺ üzeri ücretsiz kargo',
     videoBackgroundUrl: settings?.videoBackgroundUrl || '',
+    socialProofEnabled: settings?.socialProofEnabled ?? true,
+    mockupEditorEnabled: settings?.mockupEditorEnabled ?? true,
   })
   const [uploadingVideo, setUploadingVideo] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -339,6 +343,53 @@ export function SiteSettingsForm({ settings }: { settings: SiteSettings | null |
           )}
         </div>
       </div>
+      
+      <div className="border-t pt-4 space-y-4">
+        <h3 className="text-lg font-semibold">Özellik Ayarları</h3>
+        
+        <div className="flex items-center justify-between">
+          <div>
+            <Label htmlFor="socialProofEnabled">Sosyal Kanıt Özelliği</Label>
+            <p className="text-xs text-gray-500 mt-1">
+              Ürün sayfalarında "X kişi bakıyor" ve "Bugün Y adet satıldı" bilgilerini göster
+            </p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              id="socialProofEnabled"
+              checked={formData.socialProofEnabled}
+              onChange={(e) =>
+                setFormData({ ...formData, socialProofEnabled: e.target.checked })
+              }
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 dark:peer-focus:ring-primary/40 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+          </label>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <Label htmlFor="mockupEditorEnabled">Mockup Editörü</Label>
+            <p className="text-xs text-gray-500 mt-1">
+              Ana menüde mockup editörü butonunu göster
+            </p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              id="mockupEditorEnabled"
+              checked={formData.mockupEditorEnabled}
+              onChange={(e) =>
+                setFormData({ ...formData, mockupEditorEnabled: e.target.checked })
+              }
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 dark:peer-focus:ring-primary/40 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+          </label>
+        </div>
+      </div>
+      
       <Button type="submit" disabled={loading}>
         {loading ? 'Kaydediliyor...' : 'Kaydet'}
       </Button>

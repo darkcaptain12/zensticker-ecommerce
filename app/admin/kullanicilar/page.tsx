@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { maskEmail } from '@/lib/security'
 
 export default async function AdminUsersPage() {
   const users = await prisma.user.findMany({
@@ -21,7 +22,9 @@ export default async function AdminUsersPage() {
               <div className="flex justify-between items-center">
                 <div>
                   <h3 className="font-semibold">{user.name}</h3>
-                  <p className="text-sm text-gray-600">{user.email}</p>
+                  <p className="text-sm text-gray-600" title={user.email}>
+                    {maskEmail(user.email)}
+                  </p>
                   <p className="text-xs text-gray-500">
                     {new Date(user.createdAt).toLocaleDateString('tr-TR')}
                   </p>

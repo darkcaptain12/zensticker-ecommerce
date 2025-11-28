@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ProductImageManager } from './ProductImageManager'
+import { ProductVariantManager } from './ProductVariantManager'
 
 interface Category {
   id: string
@@ -51,7 +52,9 @@ interface ProductFormProps {
 export function ProductForm({ product, categories, campaigns = [] }: ProductFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [variants, setVariants] = useState<any[]>([])
   const productImages = (product as any)?.images || []
+  const productVariants = (product as any)?.variants || []
   
   // Initialize images from product - only once on mount
   const getInitialImages = () => {
@@ -65,6 +68,20 @@ export function ProductForm({ product, categories, campaigns = [] }: ProductForm
     }
     return []
   }
+  
+  // Initialize variants from product
+  useEffect(() => {
+    if (productVariants && productVariants.length > 0) {
+      setVariants(productVariants.map((v: any) => ({
+        id: v.id,
+        name: v.name,
+        value: v.value,
+        price: v.price,
+        stock: v.stock,
+        sku: v.sku,
+      })))
+    }
+  }, [product?.id])
   
   const [images, setImages] = useState<any[]>(getInitialImages())
   const [formData, setFormData] = useState({
@@ -110,6 +127,23 @@ export function ProductForm({ product, categories, campaigns = [] }: ProductForm
       })
 
       if (response.ok) {
+        const result = await response.json()
+        const productId = result.product?.id || product?.id
+
+        // Save variants if product ID exists
+        if (productId && variants.length >= 0) {
+          try {
+            await fetch(`/api/admin/products/${productId}/variants`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ variants }),
+            })
+          } catch (variantError) {
+            console.error('Variant save error:', variantError)
+            // Don't fail the whole operation if variants fail
+          }
+        }
+
         router.push('/admin/urunler')
         router.refresh()
       } else {
@@ -285,6 +319,13 @@ export function ProductForm({ product, categories, campaigns = [] }: ProductForm
         onImagesChange={(newImages: any[]) => {
           setImages(newImages)
         }}
+      />
+
+      {/* Product Variants */}
+      <ProductVariantManager
+        productId={product?.id}
+        initialVariants={variants}
+        onChange={setVariants}
       />
 
       <Card>

@@ -114,6 +114,28 @@ export function ProductDetailClient({ product }: { product: Product }) {
 
   return (
     <div className="space-y-6">
+      {/* Sticky Mobile Buttons */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-background dark:bg-dark-soft border-t border-border dark:border-dark-border p-4 shadow-lg">
+        <div className="container mx-auto flex gap-2">
+          <Button
+            onClick={handleAddToCart}
+            disabled={product.stock < quantity || adding || (product.isCustomizable && !customText.trim())}
+            className="flex-1 bg-gradient-to-r from-primary to-accent hover:shadow-neon-lg text-white"
+          >
+            <ShoppingCart className="h-4 w-4 mr-2" />
+            {adding ? 'Ekleniyor...' : 'Sepete Ekle'}
+          </Button>
+          <Button
+            onClick={handleBuyNow}
+            disabled={product.stock < quantity || adding || (product.isCustomizable && !customText.trim())}
+            variant="outline"
+            className="flex-1 border-primary hover:bg-primary hover:text-white"
+          >
+            <CreditCard className="h-4 w-4 mr-2" />
+            Hızlı Al
+          </Button>
+        </div>
+      </div>
       {/* Quantity Selector */}
       <div>
         <Label htmlFor="quantity" className="text-foreground">Adet</Label>

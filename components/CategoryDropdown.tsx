@@ -33,10 +33,10 @@ export function CategoryDropdown() {
       onMouseLeave={() => setIsOpen(false)}
     >
       <button
-        className="px-4 py-2 rounded-md hover:bg-gray-800 transition-colors font-medium flex items-center gap-1"
+        className="px-2.5 py-1.5 rounded-md hover:bg-primary/10 dark:hover:bg-primary/10 transition-colors font-medium flex items-center gap-1 text-sm text-foreground dark:text-white whitespace-nowrap"
       >
         Kategoriler
-        <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && categories.length > 0 && (

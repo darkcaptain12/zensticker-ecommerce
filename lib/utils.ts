@@ -35,3 +35,29 @@ export function generateOrderNumber(): string {
   return `ZEN-${timestamp}-${random}`
 }
 
+// Normalize image URL for cross-device compatibility
+export function normalizeImageUrl(url: string | null | undefined): string {
+  if (!url) return '/placeholder-product.jpg'
+  
+  // If already absolute URL, return as is
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url
+  }
+  
+  // If starts with /, it's already a relative path - return as is
+  if (url.startsWith('/')) {
+    return url
+  }
+  
+  // Otherwise, prepend / to make it a relative path
+  return `/${url}`
+}
+
+// Get base URL for images (for cross-device compatibility)
+export function getImageBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    return window.location.origin
+  }
+  return process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_BASE_URL || ''
+}
+

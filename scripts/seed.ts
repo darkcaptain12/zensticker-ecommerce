@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import { PrismaClient } from '@prisma/client'
 import * as XLSX from 'xlsx'
 import * as fs from 'fs'
@@ -64,7 +65,7 @@ async function main() {
       headerMarqueeText: '200₺ üzeri ücretsiz kargo',
       footerTexts: {
         about: 'Zen Sticker - Araç sticker ve kaplama çözümleri',
-        contact: 'info@zensticker.com',
+        contact: 'info@e2x.com.tr',
       },
       seoMetaDefaults: {
         title: 'Zen Sticker - Premium Araç Sticker ve Kaplama',
@@ -267,17 +268,18 @@ async function main() {
       content: `
         <h2>İletişim Bilgileri</h2>
         <p>Bizimle iletişime geçmek için aşağıdaki bilgileri kullanabilirsiniz.</p>
-        <h3>E-posta</h3>
-        <p><strong>Genel Bilgi:</strong> info@zensticker.com</p>
-        <p><strong>Destek:</strong> destek@zensticker.com</p>
+        <h3>Adres</h3>
+        <p><strong>Zen Sticker</strong><br />
+        Demirci Mah. Dere Sok. No: 19<br />
+        Nilüfer, Bursa</p>
         <h3>Telefon</h3>
-        <p><strong>Müşteri Hizmetleri:</strong> +90 (555) 123 45 67</p>
+        <p><strong>Müşteri Hizmetleri:</strong> <a href="tel:05315661805">0531 566 18 05</a></p>
         <p>Çalışma Saatleri: Pazartesi - Cuma: 09:00 - 18:00</p>
+        <h3>E-posta</h3>
+        <p><strong>Genel Bilgi ve Destek:</strong> <a href="mailto:info@e2x.com.tr">info@e2x.com.tr</a></p>
         <h3>WhatsApp</h3>
         <p>WhatsApp üzerinden 7/24 destek alabilirsiniz. Sağ alt köşedeki WhatsApp butonuna tıklayarak bize ulaşabilirsiniz.</p>
-        <h3>Adres</h3>
-        <p>Zen Sticker E-Ticaret<br />
-        Bursa, Türkiye</p>
+        <p><strong>WhatsApp:</strong> <a href="https://wa.me/905315661805" target="_blank" rel="noopener noreferrer">0531 566 18 05</a></p>
       `,
     },
     {

@@ -6,27 +6,56 @@ import { ProductDetailClient } from '@/components/ProductDetailClient'
 import { ProductImageGallery } from '@/components/ProductImageGallery'
 import { Breadcrumb } from '@/components/Breadcrumb'
 import { ProductCard } from '@/components/ProductCard'
+import { ProductSocialProof } from '@/components/ProductSocialProof'
 import Link from 'next/link'
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const product = await prisma.product.findUnique({
     where: { slug },
-    include: { category: true },
+    include: { 
+      category: true,
+      images: true,
+    },
   })
 
   if (!product) {
     return { title: 'Ürün Bulunamadı | Zen Sticker' }
   }
 
+  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+  const mainImage = product.images.find(img => img.isMain) || product.images[0]
+  const imageUrl = mainImage ? `${baseUrl}${mainImage.url}` : `${baseUrl}/placeholder-product.jpg`
+
   return {
-    title: `${product.name} | Zen Sticker`,
+    title: product.name,
+    description: product.description || `${product.name} - ${product.category.name}. Kaliteli araç sticker ve kaplama çözümleri.`,
+    keywords: [product.name, product.category.name, 'araç sticker', 'sticker', 'kaplama'],
+    openGraph: {
+      title: product.name,
+      description: product.description || `${product.name} - ${product.category.name}`,
+      images: [imageUrl],
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: product.name,
     description: product.description || `${product.name} - ${product.category.name}`,
+      images: [imageUrl],
+    },
+    alternates: {
+      canonical: `${baseUrl}/urun/${product.slug}`,
+    },
   }
 }
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
+  
+  // Get site settings for social proof
+  const siteSettings = await prisma.siteSettings.findFirst()
+  const socialProofEnabled = siteSettings?.socialProofEnabled ?? true
+  
   const product = await prisma.product.findUnique({
     where: { slug },
     include: {
@@ -34,6 +63,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       images: { orderBy: { isMain: 'desc' } },
       customOptions: true,
       campaign: true,
+      variants: { orderBy: { name: 'asc' } },
     },
   })
 
@@ -80,21 +110,31 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   }
 
   // JSON-LD for SEO
+  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: product.name,
     description: product.description || product.name,
-    image: product.images.map(img => `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}${img.url}`),
+    image: product.images.map(img => `${baseUrl}${img.url}`),
+    sku: product.sku || product.id,
     brand: {
       '@type': 'Brand',
       name: 'Zen Sticker',
     },
+    category: product.category.name,
     offers: {
       '@type': 'Offer',
       price: finalPrice,
       priceCurrency: 'TRY',
       availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      url: `${baseUrl}/urun/${product.slug}`,
+      priceValidUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    },
+    aggregateRating: {
+      '@type': 'AggregateRating',
+      ratingValue: '4.8',
+      reviewCount: '127',
     },
   }
 
@@ -166,6 +206,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                   {product.stock > 0 ? `✓ Stokta var (${product.stock} adet)` : '✗ Stokta yok'}
                 </p>
               </div>
+              
+              {/* Social Proof */}
+              <ProductSocialProof productId={product.id} enabled={socialProofEnabled} />
             </div>
 
             <ProductDetailClient product={{

@@ -41,6 +41,13 @@ export async function Footer() {
               Premium araç sticker ve kaplama çözümleri ile aracınızı öne çıkarın. 
               Kalite ve güvenilirlik odaklı hizmet anlayışımız.
             </p>
+            <div className="space-y-2 text-sm text-gray-300 dark:text-gray-300">
+              <p><strong className="text-primary">Adres:</strong><br />
+              Demirci Mah. Dere Sok. No: 19<br />
+              Nilüfer, Bursa</p>
+              <p><strong className="text-primary">Telefon:</strong><br />
+              <a href="tel:05315661805" className="hover:text-primary transition-all">0531 566 18 05</a></p>
+            </div>
             <div className="flex gap-4 pt-4">
               <a
                 href="https://www.instagram.com/zenstickerr"
@@ -57,6 +64,7 @@ export async function Footer() {
                 rel="noopener noreferrer"
                 className="w-10 h-10 rounded-full bg-primary/10 hover:bg-primary/20 hover:shadow-neon-sm border border-primary/20 flex items-center justify-center cursor-pointer transition-all hover:scale-110"
                 aria-label="WhatsApp"
+                title="0531 566 18 05"
               >
                 <MessageCircle className="h-5 w-5 text-primary" />
               </a>

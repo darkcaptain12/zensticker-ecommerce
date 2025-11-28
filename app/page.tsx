@@ -12,10 +12,13 @@ import { StatsSection } from '@/components/StatsSection'
 import { FeaturesShowcase } from '@/components/FeaturesShowcase'
 import { NewsletterSection } from '@/components/NewsletterSection'
 import { TestimonialsSection } from '@/components/TestimonialsSection'
-import { SocialProofSection } from '@/components/SocialProofSection'
+import { SocialProofSectionWrapper } from '@/components/SocialProofSectionWrapper'
 import { CategoryShowcase } from '@/components/CategoryShowcase'
 import { VideoBackgroundSection } from '@/components/VideoBackgroundSection'
 import { ProductShowcase } from '@/components/ProductShowcase'
+
+// Revalidate every 60 seconds to ensure fresh data
+export const revalidate = 60
 
 export default async function HomePage() {
   const banners = await prisma.banner.findMany({
@@ -36,15 +39,46 @@ export default async function HomePage() {
     take: 6,
   })
 
+  // Fetch featured products with proper IDs and fresh data
   const featuredProducts = await prisma.product.findMany({
-    where: { isActive: true },
+    where: { 
+      isActive: true,
+      stock: { gt: 0 }, // Only show products in stock
+    },
     include: {
-      images: { where: { isMain: true }, take: 1 },
-      category: true,
-      campaign: true,
+      images: { 
+        where: { isMain: true }, 
+        take: 1,
+        orderBy: { createdAt: 'asc' }, // Consistent image selection
+      },
+      category: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      },
+      campaign: {
+        where: {
+          isActive: true,
+          startDate: { lte: new Date() },
+          endDate: { gte: new Date() },
+        },
+        select: {
+          id: true,
+          discountPercent: true,
+          discountAmount: true,
+          startDate: true,
+          endDate: true,
+          isActive: true,
+        },
+      },
     },
     take: 8,
-    orderBy: { createdAt: 'desc' },
+    orderBy: [
+      { updatedAt: 'desc' }, // Show recently updated products first
+      { createdAt: 'desc' }
+    ],
   })
 
   return (
@@ -76,7 +110,7 @@ export default async function HomePage() {
       <StatsSection />
 
       {/* Social Proof */}
-      <SocialProofSection />
+      <SocialProofSectionWrapper />
 
       {/* Category Showcase */}
       <CategoryShowcase categories={categories} />
