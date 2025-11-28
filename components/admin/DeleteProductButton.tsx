@@ -20,12 +20,20 @@ export function DeleteProductButton({ productId }: { productId: string }) {
         method: 'DELETE',
       })
 
+      const data = await response.json()
+
       if (response.ok) {
+        if (data.deactivated) {
+          alert('Ürün siparişlerde kullanıldığı için silinemedi, pasif yapıldı.')
+        } else {
+          alert('Ürün başarıyla silindi.')
+        }
         router.refresh()
       } else {
-        alert('Silme işlemi başarısız')
+        alert(data.error || 'Silme işlemi başarısız')
       }
     } catch (error) {
+      console.error('Delete error:', error)
       alert('Bir hata oluştu')
     } finally {
       setLoading(false)

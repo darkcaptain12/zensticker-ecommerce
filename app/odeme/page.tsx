@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useCart } from '@/lib/cart-context'
 import { Button } from '@/components/ui/button'
@@ -8,9 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import Image from 'next/image'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, generateOrderNumber } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
+import { turkiyeIller, getIlcelerByIl } from '@/lib/turkiye-iller'
 
 export default function CheckoutPage() {
   const { data: session } = useSession()
@@ -19,54 +21,118 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false)
   const [showIframe, setShowIframe] = useState(false)
   const [iframeUrl, setIframeUrl] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
   const [formData, setFormData] = useState({
     customerName: session?.user?.name || '',
     customerEmail: session?.user?.email || '',
     customerPhone: '',
-    customerAddress: '',
+    il: '',
+    ilce: '',
+    acikAdres: '',
   })
+  const [selectedIlceler, setSelectedIlceler] = useState<string[]>([])
 
-  // Sepet boşsa yönlendir
+  // Client-side mount kontrolü
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Sepet boşsa yönlendir (sadece client-side)
+  useEffect(() => {
+    if (mounted && items.length === 0 && !showIframe) {
+      router.push('/sepet')
+    }
+  }, [mounted, items.length, showIframe, router])
+
+  // SSR sırasında veya sepet boşsa loading göster (404 hatası vermemek için)
+  if (!mounted) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <p className="text-gray-600">Yükleniyor...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Client-side'da sepet boşsa yönlendirme yapılacak, bu arada loading göster
   if (items.length === 0 && !showIframe) {
-    router.push('/sepet')
-    return null
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <p className="text-gray-600">Yönlendiriliyor...</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   // Kargo ücreti hesapla
   const shippingCost = finalTotal >= 200 ? 0 : 25
   const total = finalTotal + shippingCost
 
+  const handleIlChange = (il: string) => {
+    const ilceler = getIlcelerByIl(il)
+    setSelectedIlceler(ilceler)
+    setFormData({ ...formData, il, ilce: '' }) // İl değişince ilçe sıfırlanır
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validasyonlar
+    if (!formData.customerPhone.trim()) {
+      alert('Lütfen telefon numarası giriniz')
+      return
+    }
+
+    if (!formData.il || !formData.ilce || !formData.acikAdres.trim()) {
+      alert('Lütfen tüm adres bilgilerini doldurunuz')
+      return
+    }
+
+    // Adres birleştir
+    const fullAddress = `${formData.acikAdres}, ${formData.ilce}, ${formData.il}`
+
     setLoading(true)
 
     try {
+      // Order number oluştur
+      const orderNumber = generateOrderNumber()
+
       // PayTR init endpoint'ine istek at
       const response = await fetch('/api/paytr/init', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customerName: formData.customerName,
-          customerEmail: formData.customerEmail,
-          customerPhone: formData.customerPhone,
-          customerAddress: formData.customerAddress,
-          items: items.map((item) => ({
+          orderNumber,
+          amount: total,
+          email: formData.customerEmail,
+          userName: formData.customerName,
+          userPhone: formData.customerPhone.replace(/\s/g, ''), // Boşlukları kaldır
+          userAddress: fullAddress,
+          userCity: formData.il,
+          userCountry: 'Türkiye',
+          basketItems: items.map((item) => ({
             name: item.name,
             price: item.salePrice || item.price,
             quantity: item.quantity,
           })),
-          total,
         }),
       })
 
       const data = await response.json()
 
-      if (data.status === 'success' && data.iframeUrl) {
-        // Iframe'i göster
-        setIframeUrl(data.iframeUrl)
+      if (data.ok && data.token) {
+        // PayTR iframe URL'ini oluştur
+        const iframeUrl = `https://www.paytr.com/odeme/guvenli/${data.token}`
+        setIframeUrl(iframeUrl)
         setShowIframe(true)
       } else {
-        alert(data.reason || 'Ödeme başlatılamadı')
+        alert(data.error || 'Ödeme başlatılamadı')
         setLoading(false)
       }
     } catch (error) {
@@ -141,20 +207,68 @@ export default function CheckoutPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, customerPhone: e.target.value })
                     }
-                    placeholder="05XX XXX XX XX"
+                    placeholder="Telefon numaranız"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="customerAddress">Teslimat Adresi *</Label>
-                  <Textarea
-                    id="customerAddress"
+                  <Label htmlFor="il">İl *</Label>
+                  <Select
+                    value={formData.il}
+                    onValueChange={handleIlChange}
                     required
-                    value={formData.customerAddress}
+                  >
+                    <SelectTrigger id="il">
+                      <SelectValue placeholder="İl seçiniz" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {turkiyeIller.map((il) => (
+                        <SelectItem key={il.name} value={il.name}>
+                          {il.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {formData.il && (
+                  <div>
+                    <Label htmlFor="ilce">İlçe *</Label>
+                    <Select
+                      value={formData.ilce}
+                      onValueChange={(ilce) => setFormData({ ...formData, ilce })}
+                      required
+                      disabled={!formData.il}
+                    >
+                      <SelectTrigger id="ilce">
+                        <SelectValue placeholder="İlçe seçiniz" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {selectedIlceler.map((ilce) => (
+                          <SelectItem key={ilce} value={ilce}>
+                            {ilce}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div>
+                  <Label htmlFor="acikAdres">Açık Adres *</Label>
+                  <Textarea
+                    id="acikAdres"
+                    required
+                    value={formData.acikAdres}
                     onChange={(e) =>
-                      setFormData({ ...formData, customerAddress: e.target.value })
+                      setFormData({ ...formData, acikAdres: e.target.value })
                     }
                     rows={4}
+                    placeholder="Mahalle, sokak, bina no, daire no vb."
+                    disabled={!formData.il || !formData.ilce}
                   />
+                  {(!formData.il || !formData.ilce) && (
+                    <p className="text-sm text-gray-500 mt-1">
+                      Önce il ve ilçe seçiniz
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>

@@ -90,15 +90,72 @@ export async function DELETE(
 
   try {
     const { id } = await params
+
+    // Önce ürünün siparişlerde kullanılıp kullanılmadığını kontrol et
+    const orderItemsCount = await prisma.orderItem.count({
+      where: { productId: id },
+    })
+
+    if (orderItemsCount > 0) {
+      // Eğer siparişlerde kullanılmışsa, ürünü silme, sadece pasif yap
+      await prisma.product.update({
+        where: { id },
+        data: { isActive: false },
+      })
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Ürün siparişlerde kullanıldığı için silinmedi, pasif yapıldı.',
+        deactivated: true 
+      })
+    }
+
+    // Siparişlerde kullanılmamışsa, tüm ilişkili kayıtları temizle
+    // CustomStickerOption, ProductVariant, ProductImage, Favorite, CampaignPackageProduct
+    // zaten cascade delete ile otomatik silinecek, ama manuel de silebiliriz
+    
+    // Önce ilişkili kayıtları manuel sil (güvenlik için)
+    await prisma.customStickerOption.deleteMany({
+      where: { productId: id },
+    })
+    
+    await prisma.productVariant.deleteMany({
+      where: { productId: id },
+    })
+    
+    await prisma.productImage.deleteMany({
+      where: { productId: id },
+    })
+    
+    await prisma.favorite.deleteMany({
+      where: { productId: id },
+    })
+    
+    await prisma.campaignPackageProduct.deleteMany({
+      where: { productId: id },
+    })
+
+    // Sonra ürünü sil
     await prisma.product.delete({
       where: { id },
     })
 
     return NextResponse.json({ success: true })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Delete product error:', error)
+    
+    // Foreign key constraint hatası
+    if (error.code === 'P2003' || error.message?.includes('Foreign key constraint')) {
+      return NextResponse.json(
+        { 
+          error: 'Bu ürün siparişlerde kullanıldığı için silinemez. Ürün pasif yapıldı.',
+          deactivated: true 
+        },
+        { status: 400 }
+      )
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to delete product' },
+      { error: error.message || 'Failed to delete product' },
       { status: 500 }
     )
   }
