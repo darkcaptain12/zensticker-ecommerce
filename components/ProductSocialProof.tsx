@@ -12,9 +12,12 @@ interface ProductSocialProofProps {
 export function ProductSocialProof({ productId, enabled = true }: ProductSocialProofProps) {
   const [viewers, setViewers] = useState(0)
   const [todaySales, setTodaySales] = useState(0)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     if (!enabled) return
+
+    setMounted(true)
 
     // Generate random but realistic numbers
     const generateViewers = () => {
@@ -49,7 +52,7 @@ export function ProductSocialProof({ productId, enabled = true }: ProductSocialP
     }
   }, [productId, enabled])
 
-  if (!enabled) return null
+  if (!enabled || !mounted) return null
 
   return (
     <div className="flex flex-wrap gap-3 mt-4">

@@ -83,11 +83,11 @@ export default async function HomePage() {
 
   return (
     <div className="overflow-hidden">
-      {/* Banner Slider */}
+      {/* Banner Slider - En üstte göster */}
       {banners.length > 0 && (
-        <section className="bg-background">
+        <div className="relative z-30 w-full">
           <BannerSlider banners={banners} />
-        </section>
+        </div>
       )}
 
       {/* Modern Hero Section */}

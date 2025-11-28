@@ -21,7 +21,7 @@ export function HeroSection() {
   }, [])
 
   return (
-    <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:bg-gradient-to-br dark:from-dark dark:via-dark-soft dark:to-dark-card">
+    <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-gray-50 via-white to-gray-50 dark:bg-gradient-to-br dark:from-dark dark:via-dark-soft dark:to-dark-card z-0">
       {/* Animated Background - Only in dark mode */}
       <div 
         className="absolute inset-0 gradient-hero opacity-90 hidden dark:block"

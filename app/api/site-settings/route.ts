@@ -17,6 +17,10 @@ export async function GET() {
       secondaryColor: settings.secondaryColor,
       headerMarqueeText: settings.headerMarqueeText,
       videoBackgroundUrl: settings.videoBackgroundUrl,
+      headerLogoPath: settings.headerLogoPath,
+      footerLogoPath: settings.footerLogoPath,
+      socialProofEnabled: settings.socialProofEnabled,
+      mockupEditorEnabled: settings.mockupEditorEnabled,
     })
   } catch (error) {
     console.error('Error fetching site settings:', error)

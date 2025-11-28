@@ -193,6 +193,21 @@ model SiteSettings {
   @@map("site_settings")
 }
 
+model CampaignPopup {
+  id          String   @id @default(cuid())
+  title       String?  // Pop-up başlığı (opsiyonel)
+  imageUrl    String?  // Pop-up görseli
+  text        String?  @db.Text // Pop-up metni (HTML destekli)
+  buttonText  String?  // Buton metni
+  buttonUrl   String?  // Buton linki
+  isActive    Boolean  @default(true) // Pop-up aktif mi?
+  showDelay   Int      @default(3000) // Kaç ms sonra gösterilecek
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("campaign_popups")
+}
+
 model Asset {
   id        String   @id @default(cuid())
   url       String   @unique

@@ -31,10 +31,6 @@ export function Header() {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
-  
-  useEffect(() => {
-    setMounted(true)
-  }, [])
 
   useEffect(() => {
     // Check if mockup editor is enabled
@@ -48,10 +44,11 @@ export function Header() {
       })
   }, [])
 
-  // Logo path based on theme
-  const logoPath = mounted && currentTheme === 'dark' 
-    ? '/logo/beyaz_zensticker.png' 
-    : '/logo/siyah_zensticker.png'
+  // Logo path: tema bazlı - açık temada siyah, koyu temada beyaz
+  // SSR için default siyah logo, client-side'da tema değişince güncellenir
+  const logoPath = (!mounted || currentTheme === 'light') 
+    ? '/logo/siyah_zensticker.png' 
+    : '/logo/beyaz_zensticker.png'
 
   return (
     <>
@@ -65,14 +62,25 @@ export function Header() {
         }`}>
           <Link href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity group flex-shrink-0">
             <div className="relative h-7 md:h-9 w-auto">
-              {mounted && (
+              {mounted ? (
                 <Image
+                  key={currentTheme} // Tema değişince yeniden render
                   src={logoPath}
                   alt="Zen Sticker"
                   width={100}
                   height={35}
                   className="h-7 md:h-9 w-auto object-contain"
                   priority
+                />
+              ) : (
+                <Image
+                  src="/logo/siyah_zensticker.png"
+                  alt="Zen Sticker"
+                  width={100}
+                  height={35}
+                  className="h-7 md:h-9 w-auto object-contain"
+                  priority
+                  suppressHydrationWarning
                 />
               )}
             </div>

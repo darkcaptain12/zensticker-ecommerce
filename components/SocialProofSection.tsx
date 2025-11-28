@@ -25,30 +25,37 @@ interface SocialProofSectionProps {
 
 export function SocialProofSection({ enabled = true }: SocialProofSectionProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [recentPurchases, setRecentPurchases] = useState(generateRecentPurchases())
+  const [recentPurchases, setRecentPurchases] = useState<Array<{name: string; location: string; product: string; time: string}>>([])
+  const [mounted, setMounted] = useState(false)
+  const [salesCount, setSalesCount] = useState(0)
 
   useEffect(() => {
+    // Only generate random data on client side after mount
+    setMounted(true)
+    const initialPurchases = generateRecentPurchases()
+    setRecentPurchases(initialPurchases)
+    setSalesCount(45 + Math.floor(Math.random() * 30)) // 45-75 sales
+
     // Regenerate purchases every 30 seconds
     const regenerateInterval = setInterval(() => {
       setRecentPurchases(generateRecentPurchases())
     }, 30000)
 
     const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % recentPurchases.length)
+      setCurrentIndex((prev) => (prev + 1) % 8) // Always 8 items
     }, 3000 + Math.random() * 2000) // Random interval between 3-5 seconds
 
     return () => {
       clearInterval(interval)
       clearInterval(regenerateInterval)
     }
-  }, [recentPurchases.length])
+  }, [])
 
-  if (!enabled) return null
+  if (!enabled || !mounted) return null
+
+  if (recentPurchases.length === 0) return null
 
   const currentPurchase = recentPurchases[currentIndex]
-  
-  // Generate random sales count for last 24 hours
-  const salesCount = 45 + Math.floor(Math.random() * 30) // 45-75 sales
 
   return (
     <section className="py-12 bg-gray-50/50 dark:bg-dark-card/30 border-y border-border dark:border-primary/20">

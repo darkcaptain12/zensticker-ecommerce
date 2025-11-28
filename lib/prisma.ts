@@ -6,33 +6,27 @@ const globalForPrisma = globalThis as unknown as {
 
 export const prisma = globalForPrisma.prisma ?? new PrismaClient({
   log: process.env.NODE_ENV === 'development' 
-    ? ['query', 'error', 'warn'] 
+    ? ['error', 'warn'] // 'query' log'unu kaldırdık - çok fazla log üretiyor ve connection sorunlarına yol açıyor
     : ['error'],
   errorFormat: 'pretty',
 })
 
-// Enhanced error logging
+// Enhanced error logging - sadece hata durumlarında log
 prisma.$use(async (params, next) => {
-  const before = Date.now()
   try {
     const result = await next(params)
-    const after = Date.now()
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[Prisma] ${params.model}.${params.action} took ${after - before}ms`)
-    }
     return result
   } catch (error) {
-    const after = Date.now()
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      console.error(`[Prisma Error] ${params.model}.${params.action} failed after ${after - before}ms`)
+      console.error(`[Prisma Error] ${params.model}.${params.action} failed`)
       console.error(`Code: ${error.code}`)
       console.error(`Meta:`, error.meta)
       console.error(`Message:`, error.message)
     } else if (error instanceof Prisma.PrismaClientValidationError) {
-      console.error(`[Prisma Validation Error] ${params.model}.${params.action} failed after ${after - before}ms`)
+      console.error(`[Prisma Validation Error] ${params.model}.${params.action} failed`)
       console.error(`Message:`, error.message)
     } else {
-      console.error(`[Prisma Unknown Error] ${params.model}.${params.action} failed after ${after - before}ms`)
+      console.error(`[Prisma Unknown Error] ${params.model}.${params.action} failed`)
       console.error(error)
     }
     throw error
@@ -40,4 +34,3 @@ prisma.$use(async (params, next) => {
 })
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
-

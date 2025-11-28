@@ -8,6 +8,7 @@ import { MockupEditorButton } from '@/components/MockupEditorButton'
 import { Providers } from '@/components/Providers'
 import { DynamicStyles } from '@/components/DynamicStyles'
 import { Toaster } from '@/components/ui/toaster'
+import { CampaignPopup } from '@/components/CampaignPopup'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -72,6 +73,7 @@ export default function RootLayout({
             <Footer />
             <MockupEditorButton />
             <WhatsAppButton />
+            <CampaignPopup />
             <Toaster />
           </div>
         </Providers>

@@ -13,6 +13,7 @@ import {
   Image as ImageIcon,
   FileText,
   Tag,
+  MessageSquare,
 } from 'lucide-react'
 
 export default async function AdminLayout({
@@ -84,6 +85,12 @@ export default async function AdminLayout({
               <Button variant="ghost" className="w-full justify-start text-white hover:bg-gray-800">
                 <Settings className="h-4 w-4 mr-2" />
                 Site Ayarları
+              </Button>
+            </Link>
+            <Link href="/admin/popup">
+              <Button variant="ghost" className="w-full justify-start text-white hover:bg-gray-800">
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Kampanya Pop-up
               </Button>
             </Link>
           </nav>
