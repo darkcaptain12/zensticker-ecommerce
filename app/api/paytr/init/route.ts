@@ -436,6 +436,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaytrInitResp
             items: {
               create: body.basketItems.map((item) => ({
                 productId: item.productId,
+                variantId: item.variantId || null, // Varyant ID'si (varsa)
                 quantity: item.quantity || 1,
                 unitPrice: item.price,
                 lineTotal: item.price * (item.quantity || 1),

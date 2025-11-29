@@ -15,6 +15,7 @@ export interface PaytrInitRequest {
   installment?: number
   basketItems: Array<{
     productId: string // Sipariş kaydı için gerekli
+    variantId?: string // Varyant ID'si (varsa)
     name: string
     price: number
     quantity?: number

@@ -25,6 +25,14 @@ interface Product {
   stock: number
   isCustomizable: boolean
   images: Array<{ url: string; altText?: string | null }>
+  variants?: Array<{
+    id: string
+    name: string
+    value: string
+    price?: number | null
+    stock: number
+    sku?: string | null
+  }>
   customOptions?: {
     availableFonts: string[]
     maxCharacters: number
@@ -41,10 +49,45 @@ export function ProductDetailClient({ product }: { product: Product }) {
   const [selectedFont, setSelectedFont] = useState(
     product.customOptions?.availableFonts?.[0] || 'Arial'
   )
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
 
+  // Varyantlar varsa grupla (name'e göre)
+  const variantGroups = product.variants && product.variants.length > 0
+    ? product.variants.reduce((acc, variant) => {
+        if (!acc[variant.name]) {
+          acc[variant.name] = []
+        }
+        acc[variant.name].push(variant)
+        return acc
+      }, {} as Record<string, typeof product.variants>)
+    : null
+
+  // Seçilen varyantı bul
+  const selectedVariant = selectedVariantId
+    ? product.variants?.find(v => v.id === selectedVariantId)
+    : null
+
+  // Varyantlı ürün için fiyat ve stok hesapla
+  const displayPrice = selectedVariant && selectedVariant.price
+    ? product.price + selectedVariant.price
+    : product.price
+  const displayStock = selectedVariant
+    ? selectedVariant.stock
+    : product.stock
+
   const handleAddToCart = () => {
-    if (product.stock < quantity) {
+    // Varyant kontrolü
+    if (product.variants && product.variants.length > 0 && !selectedVariantId) {
+      toast({
+        variant: 'destructive',
+        title: 'Varyant Seçimi Gerekli',
+        description: 'Lütfen bir varyant seçiniz',
+      })
+      return
+    }
+
+    if (displayStock < quantity) {
       toast({
         variant: 'destructive',
         title: 'Stok Yetersiz',
@@ -67,18 +110,19 @@ export function ProductDetailClient({ product }: { product: Product }) {
 
     addItem({
       productId: product.id,
-      name: product.name,
-      price: product.price,
-      salePrice: product.salePrice || undefined,
+      name: product.name + (selectedVariant ? ` - ${selectedVariant.name}: ${selectedVariant.value}` : ''),
+      price: displayPrice,
+      salePrice: product.salePrice ? (product.salePrice + (selectedVariant?.price || 0)) : undefined,
       image: mainImage,
       quantity,
+      variantId: selectedVariantId || undefined,
       customText: product.isCustomizable ? customText : undefined,
       customFont: product.isCustomizable ? selectedFont : undefined,
     })
 
     toast({
       title: 'Sepete Eklendi',
-      description: `${product.name} sepete eklendi`,
+      description: `${product.name}${selectedVariant ? ` - ${selectedVariant.value}` : ''} sepete eklendi`,
     })
 
     setTimeout(() => {
@@ -88,7 +132,17 @@ export function ProductDetailClient({ product }: { product: Product }) {
   }
 
   const handleBuyNow = () => {
-    if (product.stock < quantity) {
+    // Varyant kontrolü
+    if (product.variants && product.variants.length > 0 && !selectedVariantId) {
+      toast({
+        variant: 'destructive',
+        title: 'Varyant Seçimi Gerekli',
+        description: 'Lütfen bir varyant seçiniz',
+      })
+      return
+    }
+
+    if (displayStock < quantity) {
       toast({
         variant: 'destructive',
         title: 'Stok Yetersiz',
@@ -119,7 +173,7 @@ export function ProductDetailClient({ product }: { product: Product }) {
         <div className="container mx-auto flex gap-2">
           <Button
             onClick={handleAddToCart}
-            disabled={product.stock < quantity || adding || (product.isCustomizable && !customText.trim())}
+            disabled={displayStock < quantity || adding || (product.isCustomizable && !customText.trim()) || (product.variants && product.variants.length > 0 && !selectedVariantId)}
             className="flex-1 bg-gradient-to-r from-primary to-accent hover:shadow-neon-lg text-white"
           >
             <ShoppingCart className="h-4 w-4 mr-2" />
@@ -127,7 +181,7 @@ export function ProductDetailClient({ product }: { product: Product }) {
           </Button>
           <Button
             onClick={handleBuyNow}
-            disabled={product.stock < quantity || adding || (product.isCustomizable && !customText.trim())}
+            disabled={displayStock < quantity || adding || (product.isCustomizable && !customText.trim()) || (product.variants && product.variants.length > 0 && !selectedVariantId)}
             variant="outline"
             className="flex-1 border-primary hover:bg-primary hover:text-white"
           >
@@ -136,6 +190,82 @@ export function ProductDetailClient({ product }: { product: Product }) {
           </Button>
         </div>
       </div>
+      {/* Variant Selection */}
+      {variantGroups && Object.keys(variantGroups).length > 0 && (
+        <Card className="border border-border dark:border-dark-border bg-card dark:bg-dark-card/50 backdrop-blur-sm rounded-2xl">
+          <CardContent className="pt-6">
+            {Object.entries(variantGroups).map(([groupName, variants]) => (
+              <div key={groupName} className="mb-4">
+                <Label className="text-foreground font-semibold mb-2 block">
+                  {groupName} *
+                </Label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {variants.map((variant) => {
+                    const isSelected = selectedVariantId === variant.id
+                    const isOutOfStock = variant.stock === 0
+                    return (
+                      <button
+                        key={variant.id}
+                        type="button"
+                        onClick={() => {
+                          if (!isOutOfStock) {
+                            setSelectedVariantId(variant.id)
+                            // Stok miktarına göre quantity'yi ayarla
+                            if (quantity > variant.stock) {
+                              setQuantity(variant.stock)
+                            }
+                          }
+                        }}
+                        disabled={isOutOfStock}
+                        className={`
+                          p-3 rounded-lg border-2 transition-all text-sm font-medium
+                          ${isSelected
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-border dark:border-dark-border bg-background dark:bg-dark-soft text-foreground hover:border-primary/50'
+                          }
+                          ${isOutOfStock
+                            ? 'opacity-50 cursor-not-allowed line-through'
+                            : 'cursor-pointer hover:bg-primary/5'
+                          }
+                        `}
+                      >
+                        <div>{variant.value}</div>
+                        {variant.price && variant.price > 0 && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            +{variant.price.toFixed(2)}₺
+                          </div>
+                        )}
+                        {isOutOfStock && (
+                          <div className="text-xs text-red-500 mt-1">Stokta Yok</div>
+                        )}
+                        {!isOutOfStock && variant.stock < 10 && (
+                          <div className="text-xs text-orange-500 mt-1">
+                            Son {variant.stock} adet
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+            {selectedVariant && (
+              <div className="mt-4 p-3 bg-primary/10 rounded-lg border border-primary/20">
+                <p className="text-sm text-primary font-semibold">
+                  Seçilen: {selectedVariant.name} - {selectedVariant.value}
+                  {selectedVariant.price && selectedVariant.price > 0 && (
+                    <span className="ml-2">(+{selectedVariant.price.toFixed(2)}₺)</span>
+                  )}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Stok: {selectedVariant.stock} adet
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Quantity Selector */}
       <div>
         <Label htmlFor="quantity" className="text-foreground">Adet</Label>
@@ -152,20 +282,23 @@ export function ProductDetailClient({ product }: { product: Product }) {
             id="quantity"
             type="number"
             min="1"
-            max={product.stock}
+            max={displayStock}
             value={quantity}
-            onChange={(e) => setQuantity(Math.max(1, Math.min(product.stock, parseInt(e.target.value) || 1)))}
+            onChange={(e) => setQuantity(Math.max(1, Math.min(displayStock, parseInt(e.target.value) || 1)))}
             className="w-20 text-center bg-background dark:bg-dark-soft border-border dark:border-dark-border text-foreground focus:border-primary focus:ring-primary"
           />
           <Button
             variant="outline"
             size="icon"
-            onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+            onClick={() => setQuantity(Math.min(displayStock, quantity + 1))}
             className="border-border dark:border-dark-border text-foreground hover:bg-primary/20 hover:border-primary hover:text-primary"
           >
             +
           </Button>
         </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Stok: {displayStock} adet
+        </p>
       </div>
 
       {/* Custom Sticker Options */}
@@ -226,7 +359,7 @@ export function ProductDetailClient({ product }: { product: Product }) {
       <div className="flex flex-col sm:flex-row gap-4 sticky bottom-0 bg-card/95 dark:bg-dark-card/95 backdrop-blur-md p-4 -mx-4 border-t border-border dark:border-primary/20 sm:relative sm:border-0 sm:p-0 sm:bg-transparent">
         <Button
           onClick={handleAddToCart}
-          disabled={adding || product.stock === 0}
+          disabled={displayStock < quantity || adding || (product.isCustomizable && !customText.trim()) || (product.variants && product.variants.length > 0 && !selectedVariantId)}
           className="flex-1 bg-gradient-to-r from-primary to-primary-light hover:from-primary-light hover:to-primary text-primary-foreground font-bold shadow-sm dark:shadow-neon-sm hover:shadow-md dark:hover:shadow-neon transition-all"
           size="lg"
         >
@@ -235,7 +368,7 @@ export function ProductDetailClient({ product }: { product: Product }) {
         </Button>
         <Button
           onClick={handleBuyNow}
-          disabled={adding || product.stock === 0}
+          disabled={adding || displayStock === 0 || (product.variants && product.variants.length > 0 && !selectedVariantId)}
           variant="default"
           className="flex-1 bg-gradient-to-r from-accent to-accent-light hover:from-accent-light hover:to-accent text-white font-bold shadow-sm dark:shadow-neon-pink hover:shadow-md dark:hover:shadow-neon-pink transition-all"
           size="lg"

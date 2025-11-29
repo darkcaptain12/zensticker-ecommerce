@@ -16,7 +16,13 @@ import { Package, User, Mail, Phone, MapPin, Truck, Calendar, DollarSign, FileTe
 import Image from 'next/image'
 
 export default async function AdminOrdersPage() {
+  // Sadece ödeme başarılı olan siparişleri göster (AWAITING_PAYMENT hariç)
   const orders = await prisma.order.findMany({
+    where: {
+      status: {
+        not: 'AWAITING_PAYMENT', // Ödeme bekleyen siparişleri gösterme
+      },
+    },
     include: {
       items: {
         include: {

@@ -213,6 +213,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
             <ProductDetailClient product={{
               ...product,
+              variants: product.variants || [],
               customOptions: product.customOptions ? {
                 ...product.customOptions,
                 availableFonts: Array.isArray(product.customOptions.availableFonts) 

@@ -69,6 +69,11 @@ export default async function AdminDashboard() {
       _sum: { totalAmount: true },
     }),
     prisma.order.findMany({
+      where: {
+        status: {
+          not: 'AWAITING_PAYMENT', // Ödeme bekleyen siparişleri gösterme
+        },
+      },
       take: 5,
       orderBy: { createdAt: 'desc' },
       include: { user: true },

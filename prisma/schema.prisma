@@ -133,15 +133,17 @@ model Order {
 }
 
 model OrderItem {
-  id         String  @id @default(cuid())
+  id         String         @id @default(cuid())
   orderId    String
-  order      Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order      Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId  String
-  product    Product @relation(fields: [productId], references: [id])
+  product    Product        @relation(fields: [productId], references: [id])
+  variantId  String?       // Seçilen varyant ID'si (varsa)
+  variant    ProductVariant? @relation(fields: [variantId], references: [id])
   quantity   Int
   unitPrice  Float
   lineTotal  Float
-  customText String? @db.Text
+  customText String?        @db.Text
   customFont String?
 
   @@map("order_items")
@@ -284,16 +286,17 @@ model Favorite {
 }
 
 model ProductVariant {
-  id        String   @id @default(cuid())
+  id        String      @id @default(cuid())
   productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  name      String   // Variant adı (örn: "Renk", "Boyut")
-  value     String   // Variant değeri (örn: "Kırmızı", "XL")
-  price     Float?   // Bu varyant için ek fiyat (opsiyonel)
-  stock     Int      @default(0) // Bu varyant için stok
-  sku       String?  // Variant SKU
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  product   Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String      // Variant adı (örn: "Renk", "Boyut")
+  value     String      // Variant değeri (örn: "Kırmızı", "XL")
+  price     Float?      // Bu varyant için ek fiyat (opsiyonel)
+  stock     Int         @default(0) // Bu varyant için stok
+  sku       String?     // Variant SKU
+  orderItems OrderItem[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 
   @@map("product_variants")
 }

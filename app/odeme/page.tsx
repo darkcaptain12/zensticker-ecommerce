@@ -149,6 +149,7 @@ export default function CheckoutPage() {
         
         return {
           productId: item.productId, // Sipariş kaydı için gerekli
+          variantId: item.variantId || undefined, // Varyant ID'si (varsa)
           name: String(item.name || '').substring(0, 255), // PayTR max 255 karakter
           price: price,
           quantity: quantity,

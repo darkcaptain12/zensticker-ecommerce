@@ -9,6 +9,7 @@ export interface CartItem {
   salePrice?: number
   image: string
   quantity: number
+  variantId?: string // Seçilen varyant ID'si
   customText?: string
   customFont?: string
 }
@@ -124,10 +125,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addItem = (item: CartItem) => {
     setItems(prev => {
-      const existing = prev.find(i => i.productId === item.productId && i.customText === item.customText)
+      // Aynı ürün + aynı varyant + aynı customText kombinasyonunu bul
+      const existing = prev.find(i => 
+        i.productId === item.productId && 
+        i.variantId === item.variantId && 
+        i.customText === item.customText
+      )
       if (existing) {
         return prev.map(i =>
-          i.productId === item.productId && i.customText === item.customText
+          i.productId === item.productId && 
+          i.variantId === item.variantId && 
+          i.customText === item.customText
             ? { ...i, quantity: i.quantity + item.quantity }
             : i
         )

@@ -38,9 +38,30 @@ export async function POST(request: NextRequest) {
       return new NextResponse('OK', { status: 200 })
     }
 
-    // Siparişi orderNumber ile bul
+    // Siparişi orderNumber ile bul (items ile birlikte, varyantlar dahil)
     const order = await prisma.order.findUnique({
       where: { orderNumber: merchantOid },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                stock: true,
+                name: true,
+              },
+            },
+            variant: {
+              select: {
+                id: true,
+                stock: true,
+                name: true,
+                value: true,
+              },
+            },
+          },
+        },
+      },
     })
 
     if (!order) {
@@ -52,26 +73,99 @@ export async function POST(request: NextRequest) {
     // PayTR status'una göre sipariş durumunu güncelle
     // PayTR status: "success" = ödeme başarılı, diğerleri = başarısız/iptal
     if (status === 'success') {
-      // Ödeme başarılı - siparişi PAID olarak güncelle
-      await prisma.order.update({
-        where: { id: order.id },
-        data: {
-          status: 'PAID',
-          paytrRefCode: paymentId || null,
-          // totalAmount zaten kaydedilmiş, PayTR'den gelen total_amount ile kontrol edebiliriz
-          // Ama şimdilik mevcut totalAmount'u koruyoruz
-        },
+      // Ödeme başarılı - Transaction içinde siparişi PAID yap ve stok azalt
+      await prisma.$transaction(async (tx) => {
+        // Siparişi PAID olarak güncelle
+        await tx.order.update({
+          where: { id: order.id },
+          data: {
+            status: 'PAID',
+            paytrRefCode: paymentId || null,
+          },
+        })
+
+        // Her ürün için stok azalt (varyant varsa varyant stokunu, yoksa ürün stokunu)
+        for (const item of order.items) {
+          const product = item.product
+          const variant = item.variant
+          const quantity = item.quantity
+
+          if (variant) {
+            // Varyantlı ürün - varyant stokunu azalt
+            const updatedVariant = await tx.productVariant.update({
+              where: { id: variant.id },
+              data: {
+                stock: {
+                  decrement: quantity,
+                },
+              },
+            })
+
+            // Stok negatif olmamalı (güvenlik için)
+            if (updatedVariant.stock < 0) {
+              console.warn(
+                `⚠️ Variant stock went negative for ${product.name} - ${variant.name}: ${variant.value} (${variant.id}). Stock: ${updatedVariant.stock}, Quantity ordered: ${quantity}`
+              )
+              // Negatif stoku 0'a çek
+              await tx.productVariant.update({
+                where: { id: variant.id },
+                data: { stock: 0 },
+              })
+            }
+
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`📦 Variant stock reduced for ${product.name} - ${variant.name}: ${variant.value}:`, {
+                variantId: variant.id,
+                oldStock: variant.stock,
+                quantity,
+                newStock: updatedVariant.stock < 0 ? 0 : updatedVariant.stock,
+              })
+            }
+          } else {
+            // Varyantsız ürün - ürün stokunu azalt
+            const updatedProduct = await tx.product.update({
+              where: { id: product.id },
+              data: {
+                stock: {
+                  decrement: quantity,
+                },
+              },
+            })
+
+            // Stok negatif olmamalı (güvenlik için)
+            if (updatedProduct.stock < 0) {
+              console.warn(
+                `⚠️ Stock went negative for product ${product.name} (${product.id}). Stock: ${updatedProduct.stock}, Quantity ordered: ${quantity}`
+              )
+              // Negatif stoku 0'a çek (gerçek senaryoda bu durum olmamalı)
+              await tx.product.update({
+                where: { id: product.id },
+                data: { stock: 0 },
+              })
+            }
+
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`📦 Stock reduced for product ${product.name}:`, {
+                productId: product.id,
+                oldStock: product.stock,
+                quantity,
+                newStock: updatedProduct.stock < 0 ? 0 : updatedProduct.stock,
+              })
+            }
+          }
+        }
       })
 
       if (process.env.NODE_ENV === 'development') {
-        console.log(`✅ Order updated to PAID: ${merchantOid}`, {
+        console.log(`✅ Order updated to PAID and stock reduced: ${merchantOid}`, {
           orderId: order.id,
           paymentId,
           totalAmount,
+          itemsCount: order.items.length,
         })
       }
     } else {
-      // Ödeme başarısız veya iptal edildi
+      // Ödeme başarısız veya iptal edildi - sadece durumu güncelle (stok azaltma)
       await prisma.order.update({
         where: { id: order.id },
         data: {
