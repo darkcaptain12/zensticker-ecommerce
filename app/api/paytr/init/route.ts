@@ -477,11 +477,11 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaytrInitResp
         }
 
         // Token geçerli olduğu için başarılı döndür, ama logla
-        return NextResponse.json({
-          ok: true,
-          token: data.token,
-          orderNumber: body.orderNumber,
-        })
+      return NextResponse.json({
+        ok: true,
+        token: data.token,
+        orderNumber: body.orderNumber,
+      })
       }
     } else {
       const errorReason = data.reason || 'PayTR token alınamadı'

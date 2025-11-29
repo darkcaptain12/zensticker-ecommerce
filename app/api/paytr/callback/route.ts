@@ -29,9 +29,9 @@ export async function POST(request: NextRequest) {
 
     // Her zaman log (production'da da) - TÜM VERİLER
     console.log('📥 PayTR Callback received:', {
-      merchantOid,
-      status,
-      totalAmount,
+        merchantOid,
+        status,
+        totalAmount,
       paymentId: paymentId || null,
       hash: hash || null,
       timestamp: new Date().toISOString(),

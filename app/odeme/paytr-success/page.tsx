@@ -8,7 +8,7 @@ import { CheckCircle, Package } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 
 async function OrderSuccessContent({ orderNumber }: { orderNumber: string }) {
-  // Önce siparişi bul (temizlenmiş orderNumber ile de dene)
+  // Önce siparişi bul
   let order = await prisma.order.findUnique({
     where: { orderNumber },
     include: {
@@ -19,36 +19,31 @@ async function OrderSuccessContent({ orderNumber }: { orderNumber: string }) {
               images: { where: { isMain: true }, take: 1 },
             },
           },
-          variant: {
-            select: {
-              id: true,
-              stock: true,
-              name: true,
-              value: true,
-            },
-          },
         },
       },
     },
   })
 
-  // Eğer bulunamadıysa, temizlenmiş orderNumber ile ara (PayTR merchant_oid formatı)
+  // Eğer bulunamadıysa, temizlenmiş orderNumber ile dene
   if (!order) {
-    const cleanedOrderNumber = orderNumber.replace(/[^A-Za-z0-9]/g, '')
-    const recentOrders = await prisma.order.findMany({
+    const allRecentOrders = await prisma.order.findMany({
       where: {
         status: 'AWAITING_PAYMENT',
         createdAt: {
           gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
         },
       },
-      select: { orderNumber: true },
+      select: {
+        orderNumber: true,
+      },
+      orderBy: { createdAt: 'desc' },
       take: 50,
     })
-    
-    for (const recentOrder of recentOrders) {
-      const cleaned = recentOrder.orderNumber.replace(/[^A-Za-z0-9]/g, '')
-      if (cleaned === cleanedOrderNumber) {
+
+    for (const recentOrder of allRecentOrders) {
+      const cleanedOrderNumber = recentOrder.orderNumber.replace(/[^A-Za-z0-9]/g, '')
+      const cleanedInput = orderNumber.replace(/[^A-Za-z0-9]/g, '')
+      if (cleanedOrderNumber === cleanedInput) {
         order = await prisma.order.findUnique({
           where: { orderNumber: recentOrder.orderNumber },
           include: {
@@ -57,14 +52,6 @@ async function OrderSuccessContent({ orderNumber }: { orderNumber: string }) {
                 product: {
                   include: {
                     images: { where: { isMain: true }, take: 1 },
-                  },
-                },
-                variant: {
-                  select: {
-                    id: true,
-                    stock: true,
-                    name: true,
-                    value: true,
                   },
                 },
               },
@@ -76,73 +63,39 @@ async function OrderSuccessContent({ orderNumber }: { orderNumber: string }) {
     }
   }
 
-  // Eğer sipariş bulundu ve AWAITING_PAYMENT durumundaysa, PAID yap ve stok azalt
+  // Eğer sipariş bulundu ve AWAITING_PAYMENT durumundaysa, PAID olarak güncelle
   if (order && order.status === 'AWAITING_PAYMENT') {
-    console.log(`🔄 Success page: Updating order ${order.orderNumber} from AWAITING_PAYMENT to PAID`)
-    
     try {
-      await prisma.$transaction(async (tx) => {
-        // Siparişi PAID yap
-        await tx.order.update({
-          where: { id: order!.id },
-          data: { status: 'PAID' },
-        })
-
-        // Stok azalt
-        for (const item of order!.items) {
-          if (item.variant) {
-            // Varyantlı ürün
-            await tx.productVariant.update({
-              where: { id: item.variant.id },
-              data: {
-                stock: {
-                  decrement: item.quantity,
-                },
-              },
-            })
-          } else {
-            // Varyantsız ürün
-            await tx.product.update({
-              where: { id: item.product.id },
-              data: {
-                stock: {
-                  decrement: item.quantity,
-                },
-              },
-            })
-          }
-        }
+      // API endpoint'ini çağır (daha güvenli ve temiz)
+      const checkResponse = await fetch(`${process.env.NEXTAUTH_URL || 'https://www.zensticker.com.tr'}/api/paytr/check-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderNumber: order.orderNumber }),
       })
-      
-      const updatedOrderNumber = order.orderNumber
-      console.log(`✅ Success page: Order ${updatedOrderNumber} updated to PAID`)
-      
-      // Siparişi tekrar yükle (güncellenmiş durumla)
-      order = await prisma.order.findUnique({
-        where: { orderNumber: updatedOrderNumber },
-        include: {
-          items: {
-            include: {
-              product: {
-                include: {
-                  images: { where: { isMain: true }, take: 1 },
-                },
-              },
-              variant: {
-                select: {
-                  id: true,
-                  stock: true,
-                  name: true,
-                  value: true,
+
+      if (checkResponse.ok) {
+        const result = await checkResponse.json()
+        console.log(`✅ Order ${order.orderNumber} updated to PAID from success page:`, result)
+        
+        // Order'ı tekrar yükle (güncellenmiş durumu görmek için)
+        order = await prisma.order.findUnique({
+          where: { orderNumber: order.orderNumber },
+          include: {
+            items: {
+              include: {
+                product: {
+                  include: {
+                    images: { where: { isMain: true }, take: 1 },
+                  },
                 },
               },
             },
           },
-        },
-      })
+        })
+      }
     } catch (error) {
-      const orderNumberForError = order?.orderNumber || orderNumber
-      console.error(`❌ Success page: Error updating order ${orderNumberForError}:`, error)
+      console.error('Error updating order from success page:', error)
+      // Hata olsa bile devam et, kullanıcıya sipariş bilgilerini göster
     }
   }
 
@@ -289,3 +242,4 @@ export default async function PaytrSuccessPage({
     </div>
   )
 }
+
