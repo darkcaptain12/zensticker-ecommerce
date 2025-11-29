@@ -20,6 +20,12 @@ interface ProductCardProps {
     salePrice?: number | null
     images: Array<{ url: string; altText?: string | null }>
     stock: number
+    variants?: Array<{
+      id: string
+      name: string
+      value: string
+      stock: number
+    }>
   }
   finalPrice: number
   originalPrice: number | null
@@ -61,6 +67,12 @@ export function ProductCard({ product, finalPrice, originalPrice, hasCampaign, h
     e.preventDefault()
     e.stopPropagation()
     if (product.stock === 0) return
+    
+    // Varyantlı ürünlerde ürün sayfasına yönlendir (varyant seçimi için)
+    if (product.variants && product.variants.length > 0) {
+      router.push(`/urun/${product.slug}`)
+      return
+    }
     
     setAdding(true)
     const mainImage = product.images.find(img => img.url)?.url || '/placeholder-product.jpg'

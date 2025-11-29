@@ -15,6 +15,12 @@ interface Product {
   salePrice?: number | null
   images: Array<{ url: string; altText?: string | null }>
   stock: number
+  variants?: Array<{
+    id: string
+    name: string
+    value: string
+    stock: number
+  }>
   category: { name: string }
   campaign?: {
     isActive: boolean
@@ -105,6 +111,7 @@ export function ProductShowcase({ products, title = 'Öne Çıkan Ürünler', sh
                       salePrice: product.salePrice,
                       images: product.images,
                       stock: product.stock,
+                      variants: product.variants,
                     }}
                     finalPrice={finalPrice}
                     originalPrice={originalPrice}

@@ -79,6 +79,14 @@ export default async function CategoryPage({
       where,
       include: {
         images: { where: { isMain: true }, take: 1 },
+        variants: {
+          select: {
+            id: true,
+            name: true,
+            value: true,
+            stock: true,
+          },
+        },
         category: true,
         campaign: {
           where: {
@@ -214,6 +222,7 @@ export default async function CategoryPage({
                       salePrice: product.salePrice,
                       images: product.images,
                       stock: product.stock,
+                      variants: product.variants,
                     }}
                     finalPrice={finalPrice}
                     originalPrice={originalPrice}

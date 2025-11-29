@@ -51,6 +51,14 @@ export default async function HomePage() {
         take: 1,
         orderBy: { createdAt: 'asc' }, // Consistent image selection
       },
+      variants: {
+        select: {
+          id: true,
+          name: true,
+          value: true,
+          stock: true,
+        },
+      },
       category: {
         select: {
           id: true,

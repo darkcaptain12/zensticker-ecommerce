@@ -39,6 +39,13 @@ export default async function AdminOrdersPage() {
               },
             },
           },
+          variant: {
+            select: {
+              id: true,
+              name: true,
+              value: true,
+            },
+          },
         },
       },
       user: {
@@ -393,6 +400,11 @@ export default async function AdminOrdersPage() {
                           <div className="flex-1">
                             <h4 className="font-semibold text-foreground mb-1">
                               {item.product.name}
+                              {item.variant && (
+                                <span className="text-sm font-normal text-muted-foreground ml-2">
+                                  ({item.variant.name}: {item.variant.value})
+                                </span>
+                              )}
                             </h4>
                             {item.product.category && (
                               <p className="text-xs text-muted-foreground mb-2">

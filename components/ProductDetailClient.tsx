@@ -60,7 +60,7 @@ export function ProductDetailClient({ product }: { product: Product }) {
         }
         acc[variant.name].push(variant)
         return acc
-      }, {} as Record<string, typeof product.variants>)
+      }, {} as Record<string, Array<NonNullable<typeof product.variants>[number]>>)
     : null
 
   // Seçilen varyantı bul
