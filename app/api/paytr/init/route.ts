@@ -415,6 +415,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaytrInitResp
 
         // Siparişi PENDING olarak kaydet
         // Eğer aynı orderNumber ile sipariş varsa güncelle (idempotent)
+        // NOT: PayTR merchant_oid temizlenmiş haliyle gönderiliyor, callback'te eşleştirme yapılacak
         const order = await prisma.order.upsert({
           where: { orderNumber: body.orderNumber },
           update: {
@@ -422,7 +423,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaytrInitResp
             paytrToken: data.token,
           },
           create: {
-            orderNumber: body.orderNumber,
+            orderNumber: body.orderNumber, // Orijinal orderNumber (örn: ZEN-ABC123-XYZ)
             userId: user?.id || null,
             customerName: body.userName,
             customerEmail: body.email,

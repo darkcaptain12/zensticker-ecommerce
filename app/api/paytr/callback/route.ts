@@ -11,6 +11,9 @@ import { prisma } from '@/lib/prisma'
  * PayTR her zaman "OK" bekler, bu yüzden hata olsa bile "OK" dönüyoruz.
  */
 export async function POST(request: NextRequest) {
+  // Her zaman log (production'da da)
+  console.log('🔔 PayTR Callback endpoint called')
+  
   try {
     // PayTR form-urlencoded olarak gönderir
     const formData = await request.formData()
@@ -21,16 +24,15 @@ export async function POST(request: NextRequest) {
     const hash = formData.get('hash') as string | null
     const paymentId = formData.get('payment_id') as string | null
 
-    // Development'ta log, production'da sadece hata durumunda
-    if (process.env.NODE_ENV === 'development') {
-      console.log('PayTR Callback received:', {
-        merchantOid,
-        status,
-        totalAmount,
-        paymentId: paymentId ? paymentId.substring(0, 10) + '...' : null,
-        hash: hash ? hash.substring(0, 20) + '...' : null,
-      })
-    }
+    // Her zaman log (production'da da)
+    console.log('📥 PayTR Callback received:', {
+      merchantOid,
+      status,
+      totalAmount,
+      paymentId: paymentId ? paymentId.substring(0, 10) + '...' : null,
+      hash: hash ? hash.substring(0, 20) + '...' : null,
+      timestamp: new Date().toISOString(),
+    })
 
     // merchant_oid yoksa işlem yapma
     if (!merchantOid) {
@@ -38,8 +40,13 @@ export async function POST(request: NextRequest) {
       return new NextResponse('OK', { status: 200 })
     }
 
-    // Siparişi orderNumber ile bul (items ile birlikte, varyantlar dahil)
-    const order = await prisma.order.findUnique({
+    // PayTR init'te merchant_oid temizleniyor: replace(/[^A-Za-z0-9]/g, '')
+    // Bu yüzden callback'te gelen merchant_oid'de `-` karakteri yok
+    // Örneğin: orderNumber = "ZEN-ABC123-XYZ" -> merchant_oid = "ZENABC123XYZ"
+    console.log(`🔍 Searching for order with merchant_oid: ${merchantOid}`)
+    
+    // Önce orijinal merchant_oid ile ara (temizlenmiş hali)
+    let order = await prisma.order.findUnique({
       where: { orderNumber: merchantOid },
       include: {
         items: {
@@ -63,25 +70,114 @@ export async function POST(request: NextRequest) {
         },
       },
     })
+    
+    // Eğer bulunamadıysa, merchant_oid'in temizlenmiş hali olabilir
+    // PayTR init'te: merchant_oid = String(body.orderNumber || '').replace(/[^A-Za-z0-9]/g, '')
+    // Yani orderNumber'daki `-` karakterleri kaldırılıyor
+    if (!order) {
+      console.log(`⚠️ Order not found with exact merchant_oid. Trying to find by cleaned orderNumber...`)
+      
+      // Tüm siparişleri al ve merchant_oid ile eşleşenleri bul
+      const allRecentOrders = await prisma.order.findMany({
+        where: {
+          status: 'AWAITING_PAYMENT', // Sadece ödeme bekleyen siparişleri kontrol et
+          createdAt: {
+            gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Son 24 saat
+          },
+        },
+        select: {
+          id: true,
+          orderNumber: true,
+          status: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      })
+      
+      // Her orderNumber'ı temizle ve merchant_oid ile karşılaştır
+      for (const recentOrder of allRecentOrders) {
+        const cleanedOrderNumber = recentOrder.orderNumber.replace(/[^A-Za-z0-9]/g, '')
+        if (cleanedOrderNumber === merchantOid) {
+          console.log(`✅ Found order by cleaned orderNumber: ${recentOrder.orderNumber} -> ${cleanedOrderNumber}`)
+          // Siparişi tekrar bul (items ile birlikte)
+          order = await prisma.order.findUnique({
+            where: { orderNumber: recentOrder.orderNumber },
+            include: {
+              items: {
+                include: {
+                  product: {
+                    select: {
+                      id: true,
+                      stock: true,
+                      name: true,
+                    },
+                  },
+                  variant: {
+                    select: {
+                      id: true,
+                      stock: true,
+                      name: true,
+                      value: true,
+                    },
+                  },
+                },
+              },
+            },
+          })
+          break
+        }
+      }
+    }
+    
+    console.log(`🔍 Order search result:`, order ? {
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      itemsCount: order.items.length,
+    } : 'NOT FOUND')
 
     if (!order) {
-      console.warn(`PayTR Callback: Order not found for merchant_oid: ${merchantOid}`)
+      console.error(`❌ PayTR Callback: Order not found for merchant_oid: ${merchantOid}`)
+      console.error('Recent AWAITING_PAYMENT orders:', await prisma.order.findMany({
+        where: {
+          status: 'AWAITING_PAYMENT',
+          createdAt: {
+            gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          },
+        },
+        select: { orderNumber: true, status: true, createdAt: true },
+        take: 10,
+        orderBy: { createdAt: 'desc' },
+      }))
       // PayTR'a yine de "OK" dön
       return new NextResponse('OK', { status: 200 })
     }
 
+    console.log(`✅ Order found: ${order.orderNumber}, Current status: ${order.status}, New status will be: ${status === 'success' ? 'PAID' : 'CANCELLED'}`)
+
     // PayTR status'una göre sipariş durumunu güncelle
     // PayTR status: "success" = ödeme başarılı, diğerleri = başarısız/iptal
+    console.log(`🔄 Processing order status update. Status from PayTR: ${status}`)
+    
     if (status === 'success') {
+      console.log(`💰 Payment successful! Updating order ${order.orderNumber} to PAID...`)
+      
       // Ödeme başarılı - Transaction içinde siparişi PAID yap ve stok azalt
       await prisma.$transaction(async (tx) => {
         // Siparişi PAID olarak güncelle
-        await tx.order.update({
+        const updatedOrder = await tx.order.update({
           where: { id: order.id },
           data: {
             status: 'PAID',
             paytrRefCode: paymentId || null,
           },
+        })
+        
+        console.log(`✅ Order status updated to PAID:`, {
+          orderId: updatedOrder.id,
+          orderNumber: updatedOrder.orderNumber,
+          status: updatedOrder.status,
+          totalAmount: updatedOrder.totalAmount,
         })
 
         // Her ürün için stok azalt (varyant varsa varyant stokunu, yoksa ürün stokunu)
@@ -156,14 +252,14 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`✅ Order updated to PAID and stock reduced: ${merchantOid}`, {
-          orderId: order.id,
-          paymentId,
-          totalAmount,
-          itemsCount: order.items.length,
-        })
-      }
+      // Her zaman log
+      console.log(`✅ Order updated to PAID and stock reduced: ${merchantOid}`, {
+        orderId: order.id,
+        paymentId,
+        totalAmount,
+        itemsCount: order.items.length,
+        timestamp: new Date().toISOString(),
+      })
     } else {
       // Ödeme başarısız veya iptal edildi - sadece durumu güncelle (stok azaltma)
       await prisma.order.update({
@@ -174,13 +270,13 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`❌ Order cancelled: ${merchantOid}`, {
-          orderId: order.id,
-          status,
-          paymentId,
-        })
-      }
+      // Her zaman log
+      console.log(`❌ Order cancelled: ${merchantOid}`, {
+        orderId: order.id,
+        status,
+        paymentId,
+        timestamp: new Date().toISOString(),
+      })
     }
 
     // TODO: Hash doğrulama (PayTR dokümantasyonuna göre hash kontrolü yapılabilir)
