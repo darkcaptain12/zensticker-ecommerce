@@ -22,13 +22,9 @@ interface Product {
     stock: number
   }>
   category: { name: string }
-  campaign?: {
-    isActive: boolean
-    startDate: Date
-    endDate: Date
-    discountPercent?: number | null
-    discountAmount?: number | null
-  } | null
+  finalPrice?: number
+  originalPrice?: number | null
+  hasCampaign?: boolean
 }
 
 interface ProductShowcaseProps {
@@ -38,31 +34,6 @@ interface ProductShowcaseProps {
 }
 
 export function ProductShowcase({ products, title = 'Öne Çıkan Ürünler', showViewAll = true }: ProductShowcaseProps) {
-
-  const calculatePrice = (product: Product) => {
-    let finalPrice = product.salePrice || product.price
-    let originalPrice = product.salePrice ? product.price : null
-    let hasCampaign = false
-
-    if (product.campaign && product.campaign.isActive) {
-      const now = new Date()
-      const startDate = new Date(product.campaign.startDate)
-      const endDate = new Date(product.campaign.endDate)
-      
-      if (now >= startDate && now <= endDate) {
-        hasCampaign = true
-        if (product.campaign.discountPercent) {
-          originalPrice = finalPrice
-          finalPrice = finalPrice - (finalPrice * product.campaign.discountPercent / 100)
-        } else if (product.campaign.discountAmount) {
-          originalPrice = finalPrice
-          finalPrice = Math.max(0, finalPrice - product.campaign.discountAmount)
-        }
-      }
-    }
-
-    return { finalPrice, originalPrice, hasCampaign }
-  }
 
   return (
     <section className="py-20 bg-background dark:bg-dark relative overflow-hidden">
@@ -99,7 +70,9 @@ export function ProductShowcase({ products, title = 'Öne Çıkan Ürünler', sh
         <div className="overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
           <div className="flex gap-4 md:gap-6 min-w-max">
             {products.map((product, index) => {
-              const { finalPrice, originalPrice, hasCampaign } = calculatePrice(product)
+              const finalPrice = product.finalPrice ?? (product.salePrice || product.price)
+              const originalPrice = product.originalPrice ?? (product.salePrice ? product.price : null)
+              const hasCampaign = product.hasCampaign ?? false
               return (
                 <div key={product.id} className="w-[280px] sm:w-[300px] flex-shrink-0">
                   <ProductCard

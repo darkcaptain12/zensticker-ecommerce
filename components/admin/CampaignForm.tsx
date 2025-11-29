@@ -48,6 +48,7 @@ export function CampaignForm({ campaign, categories = [], products = [] }: Campa
   const [formData, setFormData] = useState({
     title: campaign?.title || '',
     description: campaign?.description || '',
+    descriptionImageUrl: (campaign as any)?.descriptionImageUrl || '',
     type: campaign?.type || 'GENERAL',
     discountPercent: campaign?.discountPercent || '',
     discountAmount: campaign?.discountAmount || '',
@@ -63,10 +64,17 @@ export function CampaignForm({ campaign, categories = [], products = [] }: Campa
     isActive: campaign?.isActive ?? true,
     selectedCategories: campaign?.categoryIds || [],
     selectedProducts: campaign?.productIds || [],
-    packageProducts: campaign?.packageProducts || [],
+    packageProducts: campaign?.packageProducts?.map((pp: any) => ({
+      productId: pp.productId,
+      quantity: pp.quantity,
+      imageUrl: pp.imageUrl || '',
+    })) || [],
+    campaignCode: (campaign as any)?.campaignCode || '',
   })
 
-  const [newPackageProduct, setNewPackageProduct] = useState({ productId: '', quantity: 1 })
+  const [newPackageProduct, setNewPackageProduct] = useState({ productId: '', quantity: 1, imageUrl: '' })
+  const [uploadingPackageImage, setUploadingPackageImage] = useState<number | null>(null)
+  const [uploadingDescriptionImage, setUploadingDescriptionImage] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [imageUploadMode, setImageUploadMode] = useState<'upload' | 'url'>('upload')
@@ -92,10 +100,11 @@ export function CampaignForm({ campaign, categories = [], products = [] }: Campa
         {
           productId: newPackageProduct.productId,
           quantity: newPackageProduct.quantity,
+          imageUrl: newPackageProduct.imageUrl || '',
         },
       ],
     })
-    setNewPackageProduct({ productId: '', quantity: 1 })
+    setNewPackageProduct({ productId: '', quantity: 1, imageUrl: '' })
   }
 
   const removePackageProduct = (index: number) => {
@@ -105,17 +114,23 @@ export function CampaignForm({ campaign, categories = [], products = [] }: Campa
     })
   }
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'package' | 'description' = 'package', packageIndex?: number) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    setUploadingImage(true)
+    if (type === 'description') {
+      setUploadingDescriptionImage(true)
+    } else if (packageIndex !== undefined) {
+      setUploadingPackageImage(packageIndex)
+    } else {
+      setUploadingImage(true)
+    }
     setUploadProgress(0)
 
     try {
       const uploadFormData = new FormData()
       uploadFormData.append('file', file)
-      uploadFormData.append('folder', 'products')
+      uploadFormData.append('folder', 'campaigns')
 
       // Simulate progress
       const progressInterval = setInterval(() => {
@@ -144,11 +159,27 @@ export function CampaignForm({ campaign, categories = [], products = [] }: Campa
       const data = await response.json()
       
       if (data.success && data.url) {
-        // Set the uploaded image URL
-        setFormData((prev) => ({
-          ...prev,
-          imageUrl: data.url,
-        }))
+        if (type === 'description') {
+          // Set description image URL
+          setFormData((prev) => ({
+            ...prev,
+            descriptionImageUrl: data.url,
+          }))
+        } else if (packageIndex !== undefined) {
+          // Set package product image URL
+          setFormData((prev) => ({
+            ...prev,
+            packageProducts: prev.packageProducts.map((pp, idx) =>
+              idx === packageIndex ? { ...pp, imageUrl: data.url } : pp
+            ),
+          }))
+        } else {
+          // Set the uploaded image URL (main package image)
+          setFormData((prev) => ({
+            ...prev,
+            imageUrl: data.url,
+          }))
+        }
 
         // Also save to assets for future use
         try {
@@ -157,7 +188,9 @@ export function CampaignForm({ campaign, categories = [], products = [] }: Campa
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               url: data.url,
-              altText: `Kampanya paket görseli - ${formData.title}`,
+              altText: type === 'description' 
+                ? `Kampanya açıklama görseli - ${formData.title}`
+                : `Kampanya paket görseli - ${formData.title}`,
               type: 'IMAGE',
             }),
           })
@@ -175,6 +208,10 @@ export function CampaignForm({ campaign, categories = [], products = [] }: Campa
       alert(error.message || 'Dosya yüklenirken bir hata oluştu')
     } finally {
       setUploadingImage(false)
+      setUploadingDescriptionImage(false)
+      if (packageIndex !== undefined) {
+        setUploadingPackageImage(null)
+      }
       setUploadProgress(0)
       // Reset file input
       if (e.target) {
@@ -202,10 +239,16 @@ export function CampaignForm({ campaign, categories = [], products = [] }: Campa
           discountAmount: formData.discountAmount ? parseFloat(formData.discountAmount.toString()) : null,
           packagePrice: formData.packagePrice ? parseFloat(formData.packagePrice.toString()) : null,
           imageUrl: formData.imageUrl || null,
+          descriptionImageUrl: formData.descriptionImageUrl || null,
+          campaignCode: formData.campaignCode || null,
           minPurchaseAmount: formData.minPurchaseAmount ? parseFloat(formData.minPurchaseAmount.toString()) : null,
           categoryIds: formData.type === 'CATEGORY' ? formData.selectedCategories : [],
           productIds: formData.type === 'PRODUCT' ? formData.selectedProducts : [],
-          packageProducts: formData.type === 'PACKAGE' ? formData.packageProducts : [],
+          packageProducts: formData.type === 'PACKAGE' ? formData.packageProducts.map((pp: any) => ({
+            productId: pp.productId,
+            quantity: pp.quantity,
+            imageUrl: pp.imageUrl || null,
+          })) : [],
         }),
       })
 
@@ -243,16 +286,78 @@ export function CampaignForm({ campaign, categories = [], products = [] }: Campa
             />
           </div>
           <div>
-            <Label htmlFor="description">Açıklama</Label>
+            <Label htmlFor="description">Açıklama (HTML destekli)</Label>
             <Textarea
               id="description"
               value={formData.description}
               onChange={(e) =>
                 setFormData({ ...formData, description: e.target.value })
               }
-              rows={3}
-              placeholder="Kampanya açıklaması"
+              rows={5}
+              className="mb-2 font-mono text-sm"
+              placeholder="Kampanya açıklaması (HTML kullanabilirsiniz: &lt;strong&gt;, &lt;em&gt;, &lt;br&gt;, &lt;img&gt;, vb.)"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              HTML formatında yazabilirsiniz. Örnek: &lt;strong&gt;Kalın&lt;/strong&gt;, &lt;em&gt;İtalik&lt;/em&gt;, &lt;br&gt; (satır atla)
+            </p>
+            {/* Açıklama Görseli */}
+            <div className="mt-2">
+              <Label htmlFor="descriptionImage">Açıklama Görseli (Opsiyonel)</Label>
+              {formData.descriptionImageUrl && (
+                <div className="mb-2 relative w-48 h-48 border-2 border-gray-300 rounded-lg overflow-hidden bg-gray-100">
+                  <Image
+                    src={formData.descriptionImageUrl}
+                    alt="Açıklama görseli"
+                    fill
+                    className="object-cover"
+                    unoptimized={formData.descriptionImageUrl.includes('supabase.co') || formData.descriptionImageUrl.includes('supabase.in')}
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-2 right-2 h-8 w-8"
+                    onClick={() => setFormData({ ...formData, descriptionImageUrl: '' })}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <input
+                  type="file"
+                  id="descriptionImageUpload"
+                  accept="image/*"
+                  onChange={(e) => handleImageUpload(e, 'description')}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => document.getElementById('descriptionImageUpload')?.click()}
+                  disabled={uploadingDescriptionImage}
+                >
+                  {uploadingDescriptionImage ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Yükleniyor...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Görsel Yükle
+                    </>
+                  )}
+                </Button>
+                <Input
+                  type="text"
+                  placeholder="veya URL girin"
+                  value={formData.descriptionImageUrl}
+                  onChange={(e) => setFormData({ ...formData, descriptionImageUrl: e.target.value })}
+                  className="flex-1"
+                />
+              </div>
+            </div>
           </div>
           <div>
             <Label htmlFor="type">Kampanya Tipi *</Label>
@@ -272,12 +377,21 @@ export function CampaignForm({ campaign, categories = [], products = [] }: Campa
                 <SelectItem value="PACKAGE">Kampanya Paketi</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-xs text-gray-500 mt-1">
+              {formData.type === 'GENERAL' && 'Tüm ürünlere indirim uygulanır. Ürün seçmeye gerek yoktur.'}
+              {formData.type === 'CATEGORY' && 'Seçilen kategorilerdeki tüm ürünlere indirim uygulanır.'}
+              {formData.type === 'PRODUCT' && 'Sadece seçilen ürünlere indirim uygulanır.'}
+              {formData.type === 'PACKAGE' && 'Paket satın alma kampanyası. Paket içindeki ürünler birlikte satılır.'}
+            </p>
           </div>
 
           {/* Kategori Seçimi */}
           {formData.type === 'CATEGORY' && (
             <div>
               <Label>Kategoriler *</Label>
+              <p className="text-xs text-gray-500 mb-2">
+                Seçilen kategorilerdeki tüm ürünlere indirim uygulanacaktır.
+              </p>
               <div className="space-y-2 mt-2">
                 {categories.map((cat) => (
                   <label key={cat.id} className="flex items-center space-x-2">
@@ -347,22 +461,100 @@ export function CampaignForm({ campaign, categories = [], products = [] }: Campa
             <>
               <div>
                 <Label>Paket Ürünleri *</Label>
+                <p className="text-xs text-gray-500 mb-2">
+                  Paket içinde yer alacak ürünleri ve miktarlarını seçin. Bu ürünler birlikte paket fiyatından satılacaktır.
+                </p>
                 <div className="space-y-4 mt-2">
                 {formData.packageProducts.map((pkg, index) => {
                   const product = products.find((p) => p.id === pkg.productId)
                   return (
-                    <div key={index} className="flex items-center gap-2 p-2 border rounded">
-                      <span className="flex-1">
-                        {product?.name || 'Ürün bulunamadı'} x {pkg.quantity}
-                      </span>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removePackageProduct(index)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                    <div key={index} className="p-3 border rounded-lg space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="flex-1 font-medium">
+                          {product?.name || 'Ürün bulunamadı'} x {pkg.quantity}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removePackageProduct(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {/* Paket Ürünü Görseli */}
+                      <div>
+                        <Label className="text-xs">Ürün Görseli (Opsiyonel)</Label>
+                        {pkg.imageUrl && (
+                          <div className="mt-1 mb-2 relative w-32 h-32 border border-gray-300 rounded overflow-hidden bg-gray-100">
+                            <Image
+                              src={pkg.imageUrl}
+                              alt={`${product?.name} görseli`}
+                              fill
+                              className="object-cover"
+                              unoptimized={pkg.imageUrl.includes('supabase.co') || pkg.imageUrl.includes('supabase.in')}
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="icon"
+                              className="absolute top-1 right-1 h-6 w-6"
+                              onClick={() => {
+                                setFormData({
+                                  ...formData,
+                                  packageProducts: formData.packageProducts.map((pp, idx) =>
+                                    idx === index ? { ...pp, imageUrl: '' } : pp
+                                  ),
+                                })
+                              }}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                        <div className="flex gap-2">
+                          <input
+                            type="file"
+                            id={`packageImageUpload-${index}`}
+                            accept="image/*"
+                            onChange={(e) => handleImageUpload(e, 'package', index)}
+                            className="hidden"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => document.getElementById(`packageImageUpload-${index}`)?.click()}
+                            disabled={uploadingPackageImage === index}
+                          >
+                            {uploadingPackageImage === index ? (
+                              <>
+                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                Yükleniyor...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="h-3 w-3 mr-1" />
+                                Görsel
+                              </>
+                            )}
+                          </Button>
+                          <Input
+                            type="text"
+                            placeholder="veya URL"
+                            value={pkg.imageUrl || ''}
+                            onChange={(e) => {
+                              setFormData({
+                                ...formData,
+                                packageProducts: formData.packageProducts.map((pp, idx) =>
+                                  idx === index ? { ...pp, imageUrl: e.target.value } : pp
+                                ),
+                              })
+                            }}
+                            className="flex-1 text-xs h-8"
+                          />
+                        </div>
+                      </div>
                     </div>
                   )
                 })}
@@ -420,7 +612,7 @@ export function CampaignForm({ campaign, categories = [], products = [] }: Campa
                   placeholder="299.99"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Paket için toplam fiyat belirleyin
+                  Paket içindeki tüm ürünlerin toplam satış fiyatı. Müşteriler bu paketi bu fiyattan satın alabilecektir.
                 </p>
               </div>
               <div className="mt-4">
@@ -434,7 +626,7 @@ export function CampaignForm({ campaign, categories = [], products = [] }: Campa
                       alt="Paket görseli"
                       fill
                       className="object-cover"
-                      unoptimized
+                      unoptimized={formData.imageUrl.includes('supabase.co') || formData.imageUrl.includes('supabase.in')}
                     />
                     <Button
                       type="button"
@@ -569,6 +761,11 @@ export function CampaignForm({ campaign, categories = [], products = [] }: Campa
                   }
                   placeholder="10"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  {formData.type === 'GENERAL' && 'Tüm ürünlere uygulanacak indirim yüzdesi'}
+                  {formData.type === 'CATEGORY' && 'Seçilen kategorilerdeki ürünlere uygulanacak indirim yüzdesi'}
+                  {formData.type === 'PRODUCT' && 'Seçilen ürünlere uygulanacak indirim yüzdesi'}
+                </p>
               </div>
               <div>
                 <Label htmlFor="discountAmount">Sabit İndirim Tutarı (₺)</Label>
@@ -585,6 +782,11 @@ export function CampaignForm({ campaign, categories = [], products = [] }: Campa
                   }
                   placeholder="50"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  {formData.type === 'GENERAL' && 'Tüm ürünlerden düşülecek sabit tutar'}
+                  {formData.type === 'CATEGORY' && 'Seçilen kategorilerdeki ürünlerden düşülecek sabit tutar'}
+                  {formData.type === 'PRODUCT' && 'Seçilen ürünlerden düşülecek sabit tutar'}
+                </p>
               </div>
             </div>
           )}
@@ -603,6 +805,25 @@ export function CampaignForm({ campaign, categories = [], products = [] }: Campa
               }
               placeholder="200"
             />
+          </div>
+          <div>
+            <Label htmlFor="campaignCode">Kampanya Kodu (Opsiyonel)</Label>
+            <Input
+              id="campaignCode"
+              type="text"
+              value={formData.campaignCode}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  campaignCode: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''),
+                })
+              }
+              placeholder="ACILIS10"
+              maxLength={20}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Müşteriler bu kodu ödeme ekranında girecek. Sadece harf ve rakam kullanılabilir. Boş bırakılırsa kod gerektirmez.
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>

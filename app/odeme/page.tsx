@@ -16,7 +16,7 @@ import { turkiyeIller, getIlcelerByIl } from '@/lib/turkiye-iller'
 
 export default function CheckoutPage() {
   const { data: session } = useSession()
-  const { items, finalTotal, campaignDiscount, subtotal } = useCart()
+  const { items, finalTotal, campaignDiscount, subtotal, setCampaignDiscount } = useCart()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [showIframe, setShowIframe] = useState(false)

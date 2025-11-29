@@ -23,6 +23,7 @@ export async function PATCH(
         name: data.name,
         slug: data.slug,
         description: data.description || null,
+        bannerUrl: data.bannerUrl || null,
         isActive: data.isActive ?? true,
       },
     })

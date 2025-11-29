@@ -13,7 +13,7 @@ export default async function EditCampaignPage({
       where: { id },
       include: {
         categories: true,
-        products: true,
+        directProducts: true,
         packageProducts: true,
       },
     }),
@@ -45,7 +45,7 @@ export default async function EditCampaignPage({
           startDate: campaign.startDate.toISOString(),
           endDate: campaign.endDate.toISOString(),
           categoryIds: campaign.categories.map((c) => c.id),
-          productIds: campaign.products.map((p) => p.id),
+          productIds: campaign.directProducts.map((p) => p.id),
           packageProducts: campaign.packageProducts.map((pp) => ({
             productId: pp.productId,
             quantity: pp.quantity,

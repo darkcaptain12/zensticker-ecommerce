@@ -55,6 +55,12 @@ export function CampaignPopupForm({ popup }: { popup: CampaignPopup | null | und
       })
 
       if (response.ok) {
+        // Popup güncellendiğinde localStorage'ı temizle ki yeni popup gösterilsin
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('campaign-popup-closed')
+          localStorage.removeItem('campaign-popup-expiry')
+          localStorage.removeItem('campaign-popup-id')
+        }
         router.refresh()
         alert('Pop-up ayarları kaydedildi')
       } else {
@@ -173,6 +179,12 @@ export function CampaignPopupForm({ popup }: { popup: CampaignPopup | null | und
                   alt="Pop-up görseli"
                   fill
                   className="object-contain"
+                  unoptimized={formData.imageUrl.includes('supabase.co') || formData.imageUrl.includes('supabase.in')}
+                  onError={(e) => {
+                    console.error('Image load error:', e)
+                    const target = e.target as HTMLImageElement
+                    target.style.display = 'none'
+                  }}
                 />
                 <Button
                   type="button"

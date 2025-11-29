@@ -33,12 +33,11 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
     where: { id },
     include: {
       categories: true,
-      products: {
+      directProducts: {
         where: { isActive: true },
         include: {
           images: { where: { isMain: true }, take: 1 },
           category: true,
-          campaign: true,
         },
       },
       packageProducts: {
@@ -70,7 +69,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
   let displayProducts: any[] = []
   
   if (campaign.type === 'PRODUCT') {
-    displayProducts = campaign.products
+    displayProducts = campaign.directProducts
   } else if (campaign.type === 'CATEGORY' && campaign.categories.length > 0) {
     const categoryIds = campaign.categories.map(c => c.id)
     displayProducts = await prisma.product.findMany({
@@ -139,46 +138,55 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
   })
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <Breadcrumb
-        items={[
-          { label: 'Ana Sayfa', href: '/' },
-          { label: 'Kampanyalar', href: '/kampanyalar' },
-          { label: campaign.title },
-        ]}
-      />
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+      <div className="container mx-auto px-4 py-8">
+        {/* Breadcrumb */}
+        <Breadcrumb
+          items={[
+            { label: 'Ana Sayfa', href: '/' },
+            { label: 'Kampanyalar', href: '/kampanyalar' },
+            { label: campaign.title },
+          ]}
+        />
 
-      {/* Campaign Header */}
-      <div className="mb-12">
-        {campaign.imageUrl && (
-          <div className="relative w-full h-64 md:h-96 mb-6 rounded-lg overflow-hidden">
-            <Image
-              src={campaign.imageUrl}
-              alt={campaign.title}
-              fill
-              className="object-cover"
-              priority
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-              <Badge className="mb-3 bg-red-500">Kampanya</Badge>
-              <h1 className="text-3xl md:text-5xl font-bold mb-3">{campaign.title}</h1>
-              {campaign.description && (
-                <p className="text-lg md:text-xl text-white/90">{campaign.description}</p>
-              )}
+        {/* Başlık, Görsel ve Açıklama */}
+        <div className="mb-8 mt-6">
+          <Badge className="mb-3 bg-red-500">Kampanya</Badge>
+          <h1 className="text-4xl md:text-6xl font-bold mb-4">{campaign.title}</h1>
+          
+          {/* Campaign Image - Between Title and Description */}
+          {campaign.imageUrl && (
+            <div className="relative w-full aspect-video mb-6 rounded-lg overflow-hidden shadow-lg">
+              <Image
+                src={campaign.imageUrl}
+                alt={campaign.title}
+                fill
+                className="object-cover"
+                priority
+                unoptimized={campaign.imageUrl.includes('supabase.co') || campaign.imageUrl.includes('supabase.in')}
+              />
             </div>
-          </div>
-        )}
-
-        {!campaign.imageUrl && (
-          <div className="mb-6">
-            <Badge className="mb-3 bg-red-500">Kampanya</Badge>
-            <h1 className="text-3xl md:text-5xl font-bold mb-3">{campaign.title}</h1>
-            {campaign.description && (
-              <p className="text-lg text-gray-600">{campaign.description}</p>
-            )}
-          </div>
-        )}
+          )}
+          
+          {campaign.description && (
+            <div 
+              className="text-lg md:text-xl text-gray-700 max-w-4xl mb-6"
+              dangerouslySetInnerHTML={{ __html: campaign.description }}
+            />
+          )}
+          {/* Açıklama Görseli */}
+          {(campaign as any).descriptionImageUrl && (
+            <div className="mt-6 relative w-full max-w-5xl h-72 md:h-96 rounded-lg overflow-hidden shadow-lg">
+              <Image
+                src={(campaign as any).descriptionImageUrl}
+                alt={campaign.title}
+                fill
+                className="object-contain rounded-lg bg-gray-50"
+                unoptimized={(campaign as any).descriptionImageUrl?.includes('supabase.co') || (campaign as any).descriptionImageUrl?.includes('supabase.in')}
+              />
+            </div>
+          )}
+        </div>
 
         {/* Campaign Info Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -263,6 +271,21 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
               </CardContent>
             </Card>
           )}
+
+          {campaign.campaignCode && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <Tag className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="text-sm text-gray-600">Kampanya Kodu</p>
+                    <p className="font-semibold text-primary text-lg">{campaign.campaignCode}</p>
+                    <p className="text-xs text-gray-500 mt-1">Ödeme ekranında bu kodu girin</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Package Products List */}
@@ -276,13 +299,14 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                 {campaign.packageProducts.map((pp, idx) => (
                   <li key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded">
                     <div className="flex items-center gap-3">
-                      {pp.product.images[0] && (
+                      {((pp as any).imageUrl || pp.product.images[0]) && (
                         <div className="relative w-12 h-12 rounded overflow-hidden">
                           <Image
-                            src={pp.product.images[0].url}
+                            src={(pp as any).imageUrl || pp.product.images[0].url}
                             alt={pp.product.name}
                             fill
                             className="object-cover"
+                            unoptimized={(pp as any).imageUrl?.includes('supabase.co') || (pp as any).imageUrl?.includes('supabase.in')}
                           />
                         </div>
                       )}

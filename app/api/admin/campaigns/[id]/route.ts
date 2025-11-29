@@ -22,7 +22,7 @@ export async function PATCH(
       where: { id },
       data: {
         categories: { set: [] },
-        products: { set: [] },
+        directProducts: { set: [] },
         packageProducts: { deleteMany: {} },
       },
     })
@@ -32,11 +32,13 @@ export async function PATCH(
       data: {
         title: data.title,
         description: data.description || null,
+        descriptionImageUrl: data.descriptionImageUrl || null,
         type: data.type || 'GENERAL',
         discountPercent: data.discountPercent || null,
         discountAmount: data.discountAmount || null,
         packagePrice: data.packagePrice || null,
         imageUrl: data.imageUrl || null,
+        campaignCode: data.campaignCode || null,
         minPurchaseAmount: data.minPurchaseAmount || null,
         startDate: new Date(data.startDate),
         endDate: new Date(data.endDate),
@@ -44,19 +46,20 @@ export async function PATCH(
         categories: data.categoryIds && data.categoryIds.length > 0 ? {
           connect: data.categoryIds.map((id: string) => ({ id })),
         } : undefined,
-        products: data.productIds && data.productIds.length > 0 ? {
+        directProducts: data.type === 'PRODUCT' && data.productIds && data.productIds.length > 0 ? {
           connect: data.productIds.map((id: string) => ({ id })),
         } : undefined,
         packageProducts: data.packageProducts && data.packageProducts.length > 0 ? {
           create: data.packageProducts.map((pp: any) => ({
             productId: pp.productId,
             quantity: pp.quantity || 1,
+            imageUrl: pp.imageUrl || null,
           })),
         } : undefined,
       },
       include: {
         categories: true,
-        products: true,
+        directProducts: true,
         packageProducts: true,
       },
     })

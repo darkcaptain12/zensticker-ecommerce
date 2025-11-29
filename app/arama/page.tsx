@@ -40,7 +40,7 @@ export default async function SearchPage({
 
   const searchTerm = q.trim().toLowerCase()
 
-  const products = await prisma.product.findMany({
+  const productsRaw = await prisma.product.findMany({
     where: {
       isActive: true,
       OR: [
@@ -52,34 +52,35 @@ export default async function SearchPage({
     include: {
       images: { where: { isMain: true }, take: 1 },
       category: true,
-      campaign: true,
     },
     orderBy: { createdAt: 'desc' },
   })
 
-  const calculatePrice = (product: any) => {
-    let finalPrice = product.salePrice || product.price
-    let originalPrice = product.salePrice ? product.price : null
-    let hasCampaign = false
+  // Calculate campaign prices for all products
+  const { calculateCampaignPrices } = await import('@/lib/campaign-utils')
+  const campaignPrices = await calculateCampaignPrices(
+    productsRaw.map(p => ({
+      id: p.id,
+      price: p.price,
+      salePrice: p.salePrice,
+      categoryId: p.categoryId,
+    }))
+  )
 
-    if (product.campaign && product.campaign.isActive) {
-      const now = new Date()
-      const startDate = product.campaign.startDate ? new Date(product.campaign.startDate) : null
-      const endDate = product.campaign.endDate ? new Date(product.campaign.endDate) : null
-
-      if ((!startDate || now >= startDate) && (!endDate || now <= endDate)) {
-        hasCampaign = true
-        if (product.campaign.discountPercent) {
-          originalPrice = finalPrice
-          finalPrice = finalPrice - (finalPrice * product.campaign.discountPercent / 100)
-        } else if (product.campaign.discountAmount) {
-          originalPrice = finalPrice
-          finalPrice = Math.max(0, finalPrice - product.campaign.discountAmount)
-        }
-      }
+  // Add campaign info to products
+  const products = productsRaw.map(product => {
+    const priceInfo = campaignPrices.get(product.id) || {
+      finalPrice: product.salePrice || product.price,
+      originalPrice: product.salePrice ? product.price : null,
+      hasCampaign: false,
     }
-    return { finalPrice, originalPrice, hasCampaign }
-  }
+    return {
+      ...product,
+      finalPrice: priceInfo.finalPrice,
+      originalPrice: priceInfo.originalPrice,
+      hasCampaign: priceInfo.hasCampaign,
+    }
+  })
 
   return (
     <div className="container mx-auto px-4 py-12">
@@ -105,7 +106,9 @@ export default async function SearchPage({
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
           {products.map((product) => {
-            const { finalPrice, originalPrice, hasCampaign } = calculatePrice(product)
+            const finalPrice = product.finalPrice
+            const originalPrice = product.originalPrice
+            const hasCampaign = product.hasCampaign
             const mainImage = product.images[0]?.url || '/placeholder-product.jpg'
 
             return (

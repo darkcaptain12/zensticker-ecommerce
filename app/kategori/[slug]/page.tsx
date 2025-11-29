@@ -74,7 +74,7 @@ export default async function CategoryPage({
     where.salePrice = { not: null }
   }
 
-  const [products, totalCount] = await Promise.all([
+  const [productsRaw, totalCount] = await Promise.all([
     prisma.product.findMany({
       where,
       include: {
@@ -88,21 +88,6 @@ export default async function CategoryPage({
           },
         },
         category: true,
-        campaign: {
-          where: {
-            isActive: true,
-            startDate: { lte: new Date() },
-            endDate: { gte: new Date() },
-          },
-          select: {
-            id: true,
-            discountPercent: true,
-            discountAmount: true,
-            startDate: true,
-            endDate: true,
-            isActive: true,
-          },
-        },
       },
       orderBy,
       skip: (currentPage - 1) * itemsPerPage,
@@ -111,28 +96,86 @@ export default async function CategoryPage({
     prisma.product.count({ where }),
   ])
 
+  // Calculate campaign prices for all products
+  const { calculateCampaignPrices } = await import('@/lib/campaign-utils')
+  const campaignPrices = await calculateCampaignPrices(
+    productsRaw.map(p => ({
+      id: p.id,
+      price: p.price,
+      salePrice: p.salePrice,
+      categoryId: p.categoryId,
+    }))
+  )
+
+  // Add campaign info to products
+  const products = productsRaw.map(product => {
+    const priceInfo = campaignPrices.get(product.id) || {
+      finalPrice: product.salePrice || product.price,
+      originalPrice: product.salePrice ? product.price : null,
+      hasCampaign: false,
+    }
+    return {
+      ...product,
+      finalPrice: priceInfo.finalPrice,
+      originalPrice: priceInfo.originalPrice,
+      hasCampaign: priceInfo.hasCampaign,
+    }
+  })
+
   const totalPages = Math.ceil(totalCount / itemsPerPage)
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-primary via-purple-600 to-pink-600 text-white py-16 md:py-24">
-        <div className="container mx-auto px-4">
-          <Breadcrumb
-            items={[
-              { label: 'Ana Sayfa', href: '/' },
-              { label: 'Kategoriler', href: '/kategoriler' },
-              { label: category.name, href: `/kategori/${category.slug}` },
-            ]}
+      {category.bannerUrl ? (
+        <div className="relative w-full h-64 md:h-96 mb-8">
+          <Image
+            src={category.bannerUrl}
+            alt={category.name}
+            fill
+            className="object-cover"
+            unoptimized={category.bannerUrl.includes('supabase.co') || category.bannerUrl.includes('supabase.in')}
+            priority
           />
-          <h1 className="text-4xl md:text-6xl font-bold mb-4 mt-8">{category.name}</h1>
-          {category.description && (
-            <p className="text-xl md:text-2xl text-white/90 max-w-3xl">
-              {category.description}
-            </p>
-          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex items-end">
+            <div className="container mx-auto px-4 pb-8 text-white">
+              <Breadcrumb
+                items={[
+                  { label: 'Ana Sayfa', href: '/' },
+                  { label: 'Kategoriler', href: '/kategoriler' },
+                  { label: category.name, href: `/kategori/${category.slug}` },
+                ]}
+              />
+              <h1 className="text-4xl md:text-6xl font-bold mb-4 mt-4">{category.name}</h1>
+              {category.description && (
+                <div 
+                  className="text-xl md:text-2xl text-white/90 max-w-3xl"
+                  dangerouslySetInnerHTML={{ __html: category.description }}
+                />
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="bg-gradient-to-r from-primary via-purple-600 to-pink-600 text-white py-16 md:py-24">
+          <div className="container mx-auto px-4">
+            <Breadcrumb
+              items={[
+                { label: 'Ana Sayfa', href: '/' },
+                { label: 'Kategoriler', href: '/kategoriler' },
+                { label: category.name, href: `/kategori/${category.slug}` },
+              ]}
+            />
+            <h1 className="text-4xl md:text-6xl font-bold mb-4 mt-8">{category.name}</h1>
+            {category.description && (
+              <div 
+                className="text-xl md:text-2xl text-white/90 max-w-3xl"
+                dangerouslySetInnerHTML={{ __html: category.description }}
+              />
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="container mx-auto px-4 py-8 md:py-12">
         {/* Filters and Sort */}
@@ -189,28 +232,6 @@ export default async function CategoryPage({
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
               {products.map((product) => {
-                // Calculate price with campaign
-                let finalPrice = product.salePrice || product.price
-                let originalPrice = product.salePrice ? product.price : null
-                let hasCampaign = false
-
-                if (product.campaign) {
-                  const now = new Date()
-                  const startDate = new Date(product.campaign.startDate)
-                  const endDate = new Date(product.campaign.endDate)
-                  
-                  if (now >= startDate && now <= endDate) {
-                    hasCampaign = true
-                    if (product.campaign.discountPercent) {
-                      originalPrice = finalPrice
-                      finalPrice = finalPrice - (finalPrice * product.campaign.discountPercent / 100)
-                    } else if (product.campaign.discountAmount) {
-                      originalPrice = finalPrice
-                      finalPrice = Math.max(0, finalPrice - product.campaign.discountAmount)
-                    }
-                  }
-                }
-
                 return (
                   <ProductCard
                     key={product.id}
@@ -224,9 +245,9 @@ export default async function CategoryPage({
                       stock: product.stock,
                       variants: product.variants,
                     }}
-                    finalPrice={finalPrice}
-                    originalPrice={originalPrice}
-                    hasCampaign={hasCampaign}
+                    finalPrice={product.finalPrice}
+                    originalPrice={product.originalPrice}
+                    hasCampaign={product.hasCampaign}
                     hasSale={!!product.salePrice}
                   />
                 )

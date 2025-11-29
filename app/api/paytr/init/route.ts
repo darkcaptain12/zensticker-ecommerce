@@ -387,7 +387,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaytrInitResp
           select: { id: true },
         })
 
-        // Campaign kontrolü - subtotal'e göre aktif kampanya bul
+        // Campaign kontrolü - sadece otomatik kampanyalar
         const subtotal = body.basketItems.reduce(
           (sum, item) => sum + (item.price * (item.quantity || 1)),
           0
@@ -400,6 +400,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaytrInitResp
             where: {
               isActive: true,
               type: 'GENERAL',
+              campaignCode: null, // Only campaigns without codes are auto-applied
               startDate: { lte: now },
               endDate: { gte: now },
               minPurchaseAmount: { lte: subtotal },

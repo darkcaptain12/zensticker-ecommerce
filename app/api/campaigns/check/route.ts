@@ -12,10 +12,12 @@ export async function POST(request: NextRequest) {
     const now = new Date()
 
     // Find active GENERAL campaigns with minimum purchase amount
+    // Only campaigns without codes are auto-applied
     const campaigns = await prisma.campaign.findMany({
       where: {
         isActive: true,
         type: 'GENERAL',
+        campaignCode: null, // Only campaigns without codes are auto-applied
         startDate: { lte: now },
         endDate: { gte: now },
         minPurchaseAmount: {

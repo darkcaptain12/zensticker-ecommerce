@@ -8,10 +8,22 @@ export async function GET() {
     })
 
     if (!popup) {
-      return NextResponse.json(null)
+      return NextResponse.json(null, {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      })
     }
 
-    return NextResponse.json(popup)
+    return NextResponse.json(popup, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    })
   } catch (error) {
     console.error('Error fetching campaign popup:', error)
     return NextResponse.json(

@@ -72,7 +72,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   }
 
   // Get related products (same category, different product)
-  const relatedProducts = await prisma.product.findMany({
+  const relatedProductsRaw = await prisma.product.findMany({
     where: {
       categoryId: product.categoryId,
       id: { not: product.id },
@@ -80,34 +80,49 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     },
     include: {
       images: { where: { isMain: true }, take: 1 },
-      campaign: true,
     },
     take: 4,
     orderBy: { createdAt: 'desc' },
   })
 
-  // Calculate price with campaign discount
-  let finalPrice = product.salePrice || product.price
-  let originalPrice = product.salePrice ? product.price : null
-  let campaignDiscount = 0
+  // Calculate campaign prices for related products
+  const { calculateCampaignPrices } = await import('@/lib/campaign-utils')
+  const relatedCampaignPrices = await calculateCampaignPrices(
+    relatedProductsRaw.map(p => ({
+      id: p.id,
+      price: p.price,
+      salePrice: p.salePrice,
+      categoryId: p.categoryId,
+    }))
+  )
 
-  if (product.campaign && product.campaign.isActive) {
-    const now = new Date()
-    const startDate = new Date(product.campaign.startDate)
-    const endDate = new Date(product.campaign.endDate)
-    
-    if (now >= startDate && now <= endDate) {
-      if (product.campaign.discountPercent) {
-        campaignDiscount = (finalPrice * product.campaign.discountPercent) / 100
-        originalPrice = finalPrice
-        finalPrice = finalPrice - campaignDiscount
-      } else if (product.campaign.discountAmount) {
-        campaignDiscount = product.campaign.discountAmount
-        originalPrice = finalPrice
-        finalPrice = Math.max(0, finalPrice - campaignDiscount)
-      }
+  const relatedProducts = relatedProductsRaw.map(p => {
+    const priceInfo = relatedCampaignPrices.get(p.id) || {
+      finalPrice: p.salePrice || p.price,
+      originalPrice: p.salePrice ? p.price : null,
+      hasCampaign: false,
     }
-  }
+    return {
+      ...p,
+      finalPrice: priceInfo.finalPrice,
+      originalPrice: priceInfo.originalPrice,
+      hasCampaign: priceInfo.hasCampaign,
+    }
+  })
+
+  // Calculate price with campaign discount using campaign utils
+  const { calculateCampaignPrice } = await import('@/lib/campaign-utils')
+  const campaignPriceInfo = await calculateCampaignPrice({
+    id: product.id,
+    price: product.price,
+    salePrice: product.salePrice,
+    categoryId: product.categoryId,
+  })
+  
+  const finalPrice = campaignPriceInfo.finalPrice
+  const originalPrice = campaignPriceInfo.originalPrice
+  const campaignDiscount = campaignPriceInfo.campaignDiscount || 0
+  const campaignTitle = campaignPriceInfo.campaignTitle
 
   // JSON-LD for SEO
   const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
@@ -193,11 +208,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                     currency: 'TRY',
                   }).format(finalPrice)}
                 </p>
-                {product.campaign && campaignDiscount > 0 && (
+                {campaignTitle && campaignDiscount > 0 && (
                   <Badge className="bg-gradient-to-r from-accent to-accent-light dark:hover:shadow-neon-pink text-white text-sm px-3 py-1 border border-accent/50">
-                    🎉 {product.campaign.title}
-                    {product.campaign.discountPercent && ` - %${product.campaign.discountPercent} İndirim`}
-                    {product.campaign.discountAmount && ` - ${product.campaign.discountAmount}₺ İndirim`}
+                    🎉 {campaignTitle}
+                    {campaignPriceInfo.campaignDiscount && ` - ${campaignPriceInfo.campaignDiscount.toFixed(2)}₺ İndirim`}
                   </Badge>
                 )}
               </div>
@@ -269,47 +283,24 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <section className="mt-16">
             <h2 className="text-2xl md:text-3xl font-bold mb-8 text-foreground">Benzer Ürünler</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6">
-              {relatedProducts.map((relatedProduct) => {
-                let relatedFinalPrice = relatedProduct.salePrice || relatedProduct.price
-                let relatedOriginalPrice = relatedProduct.salePrice ? relatedProduct.price : null
-                let relatedHasCampaign = false
-
-                if (relatedProduct.campaign && relatedProduct.campaign.isActive) {
-                  const now = new Date()
-                  const startDate = new Date(relatedProduct.campaign.startDate)
-                  const endDate = new Date(relatedProduct.campaign.endDate)
-                  
-                  if (now >= startDate && now <= endDate) {
-                    relatedHasCampaign = true
-                    if (relatedProduct.campaign.discountPercent) {
-                      relatedOriginalPrice = relatedFinalPrice
-                      relatedFinalPrice = relatedFinalPrice - (relatedFinalPrice * relatedProduct.campaign.discountPercent / 100)
-                    } else if (relatedProduct.campaign.discountAmount) {
-                      relatedOriginalPrice = relatedFinalPrice
-                      relatedFinalPrice = Math.max(0, relatedFinalPrice - relatedProduct.campaign.discountAmount)
-                    }
-                  }
-                }
-
-                return (
-                  <ProductCard
-                    key={relatedProduct.id}
-                    product={{
-                      id: relatedProduct.id,
-                      name: relatedProduct.name,
-                      slug: relatedProduct.slug,
-                      price: relatedProduct.price,
-                      salePrice: relatedProduct.salePrice,
-                      images: relatedProduct.images,
-                      stock: relatedProduct.stock,
-                    }}
-                    finalPrice={relatedFinalPrice}
-                    originalPrice={relatedOriginalPrice}
-                    hasCampaign={relatedHasCampaign}
-                    hasSale={!!relatedProduct.salePrice}
-                  />
-                )
-              })}
+              {relatedProducts.map((relatedProduct) => (
+                <ProductCard
+                  key={relatedProduct.id}
+                  product={{
+                    id: relatedProduct.id,
+                    name: relatedProduct.name,
+                    slug: relatedProduct.slug,
+                    price: relatedProduct.price,
+                    salePrice: relatedProduct.salePrice,
+                    images: relatedProduct.images,
+                    stock: relatedProduct.stock,
+                  }}
+                  finalPrice={relatedProduct.finalPrice}
+                  originalPrice={relatedProduct.originalPrice}
+                  hasCampaign={relatedProduct.hasCampaign}
+                  hasSale={!!relatedProduct.salePrice}
+                />
+              ))}
             </div>
           </section>
         )}

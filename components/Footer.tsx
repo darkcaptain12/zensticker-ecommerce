@@ -37,37 +37,48 @@ export async function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
           <div className="space-y-4">
             <FooterLogo logoPath={settings?.footerLogoPath || null} />
-            <p className="text-gray-300 dark:text-gray-300 text-sm leading-relaxed">
-              Premium araç sticker ve kaplama çözümleri ile aracınızı öne çıkarın. 
-              Kalite ve güvenilirlik odaklı hizmet anlayışımız.
-            </p>
-            <div className="space-y-2 text-sm text-gray-300 dark:text-gray-300">
-              <p><strong className="text-primary">Adres:</strong><br />
-              Demirci Mah. Dere Sok. No: 19<br />
-              Nilüfer, Bursa</p>
-              <p><strong className="text-primary">Telefon:</strong><br />
-              <a href="tel:05315661805" className="hover:text-primary transition-all">0531 566 18 05</a></p>
-            </div>
+            {settings?.footerDescription && (
+              <p className="text-gray-300 dark:text-gray-300 text-sm leading-relaxed">
+                {settings.footerDescription}
+              </p>
+            )}
+            {settings?.footerAddress && (
+              <div className="space-y-2 text-sm text-gray-300 dark:text-gray-300">
+                <p>
+                  <strong className="text-primary">Adres:</strong><br />
+                  {settings.footerAddress.split('\n').map((line, idx) => (
+                    <span key={idx}>
+                      {line}
+                      {idx < settings.footerAddress!.split('\n').length - 1 && <br />}
+                    </span>
+                  ))}
+                </p>
+              </div>
+            )}
             <div className="flex gap-4 pt-4">
-              <a
-                href="https://www.instagram.com/zenstickerr"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 rounded-full bg-primary/10 hover:bg-primary/20 hover:shadow-neon-sm border border-primary/20 flex items-center justify-center cursor-pointer transition-all hover:scale-110"
-                aria-label="Instagram"
-              >
-                <Instagram className="h-5 w-5 text-primary" />
-              </a>
-              <a
-                href={`https://wa.me/905315661805`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-10 h-10 rounded-full bg-primary/10 hover:bg-primary/20 hover:shadow-neon-sm border border-primary/20 flex items-center justify-center cursor-pointer transition-all hover:scale-110"
-                aria-label="WhatsApp"
-                title="0531 566 18 05"
-              >
-                <MessageCircle className="h-5 w-5 text-primary" />
-              </a>
+              {settings?.instagramUrl && (
+                <a
+                  href={settings.instagramUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-10 h-10 rounded-full bg-primary/10 hover:bg-primary/20 hover:shadow-neon-sm border border-primary/20 flex items-center justify-center cursor-pointer transition-all hover:scale-110"
+                  aria-label="Instagram"
+                >
+                  <Instagram className="h-5 w-5 text-primary" />
+                </a>
+              )}
+              {settings?.whatsappPhoneNumber && (
+                <a
+                  href={`https://wa.me/${settings.whatsappPhoneNumber.replace(/[^0-9]/g, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-10 h-10 rounded-full bg-primary/10 hover:bg-primary/20 hover:shadow-neon-sm border border-primary/20 flex items-center justify-center cursor-pointer transition-all hover:scale-110"
+                  aria-label="WhatsApp"
+                  title={settings.whatsappPhoneNumber}
+                >
+                  <MessageCircle className="h-5 w-5 text-primary" />
+                </a>
+              )}
             </div>
           </div>
 

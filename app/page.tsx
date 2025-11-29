@@ -40,7 +40,7 @@ export default async function HomePage() {
   })
 
   // Fetch featured products with proper IDs and fresh data
-  const featuredProducts = await prisma.product.findMany({
+  const featuredProductsRaw = await prisma.product.findMany({
     where: { 
       isActive: true,
       stock: { gt: 0 }, // Only show products in stock
@@ -66,27 +66,39 @@ export default async function HomePage() {
           slug: true,
         },
       },
-      campaign: {
-        where: {
-          isActive: true,
-          startDate: { lte: new Date() },
-          endDate: { gte: new Date() },
-        },
-        select: {
-          id: true,
-          discountPercent: true,
-          discountAmount: true,
-          startDate: true,
-          endDate: true,
-          isActive: true,
-        },
-      },
     },
     take: 8,
     orderBy: [
       { updatedAt: 'desc' }, // Show recently updated products first
       { createdAt: 'desc' }
     ],
+  })
+
+  // Calculate campaign prices for all products
+  const { calculateCampaignPrices } = await import('@/lib/campaign-utils')
+  const campaignPrices = await calculateCampaignPrices(
+    featuredProductsRaw.map(p => ({
+      id: p.id,
+      price: p.price,
+      salePrice: p.salePrice,
+      categoryId: p.categoryId,
+    }))
+  )
+
+  // Add campaign info to products
+  const featuredProducts = featuredProductsRaw.map(product => {
+    const priceInfo = campaignPrices.get(product.id) || {
+      finalPrice: product.salePrice || product.price,
+      originalPrice: product.salePrice ? product.price : null,
+      hasCampaign: false,
+    }
+    return {
+      ...product,
+      finalPrice: priceInfo.finalPrice,
+      originalPrice: priceInfo.originalPrice,
+      hasCampaign: priceInfo.hasCampaign,
+      campaignTitle: priceInfo.campaignTitle,
+    }
   })
 
   return (

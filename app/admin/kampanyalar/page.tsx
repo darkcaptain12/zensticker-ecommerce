@@ -10,10 +10,10 @@ export default async function AdminCampaignsPage() {
   const campaigns = await prisma.campaign.findMany({
     include: {
       _count: {
-        select: { products: true },
+        select: { directProducts: true },
       },
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: 'asc' }, // Yeni eklenenler alta eklensin
   })
 
   return (
@@ -68,7 +68,7 @@ export default async function AdminCampaignsPage() {
                         </span>
                       )}
                       <span className="text-gray-600">
-                        {campaign._count.products} ürün
+                        {campaign._count.directProducts} ürün
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 mt-2">

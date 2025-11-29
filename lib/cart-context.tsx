@@ -31,6 +31,7 @@ interface CartContextType {
   itemCount: number
   total: number
   campaignDiscount: CampaignDiscount | null
+  setCampaignDiscount: (discount: CampaignDiscount | null) => void
   subtotal: number // Total before campaign discount
   finalTotal: number // Total after campaign discount
 }
@@ -60,6 +61,7 @@ function getCookie(name: string): string | null {
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
   const [campaignDiscount, setCampaignDiscount] = useState<CampaignDiscount | null>(null)
+  const [isManualCampaign, setIsManualCampaign] = useState(false) // Track if campaign was manually applied via code
 
   useEffect(() => {
     // Try to load from cookie first (for cross-device compatibility)
@@ -95,7 +97,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items])
 
   // Check for campaign discounts when cart total changes
+  // Only check if no manual campaign code was applied
   useEffect(() => {
+    // Don't auto-check if manual campaign is applied
+    if (isManualCampaign) {
+      return
+    }
+
     const checkCampaign = async () => {
       const subtotal = items.reduce(
         (sum, item) => sum + (item.salePrice || item.price) * item.quantity,
@@ -121,7 +129,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
 
     checkCampaign()
-  }, [items])
+  }, [items, isManualCampaign])
 
   const addItem = (item: CartItem) => {
     setItems(prev => {
@@ -160,6 +168,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = () => {
     setItems([])
+    setCampaignDiscount(null)
+    setIsManualCampaign(false)
+  }
+
+  const setCampaignDiscountManual = (discount: CampaignDiscount | null) => {
+    setCampaignDiscount(discount)
+    setIsManualCampaign(discount !== null) // Mark as manual if discount is set
   }
 
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0)
@@ -183,6 +198,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         itemCount,
         total: finalTotal, // Keep 'total' for backward compatibility
         campaignDiscount,
+        setCampaignDiscount: setCampaignDiscountManual,
         subtotal,
         finalTotal,
       }}

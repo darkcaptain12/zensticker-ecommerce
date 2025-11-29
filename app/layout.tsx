@@ -55,6 +55,11 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
+  icons: {
+    icon: '/logo/zs_siyah.png',
+    shortcut: '/logo/zs_siyah.png',
+    apple: '/logo/zs_siyah.png',
+  },
 }
 
 export default function RootLayout({

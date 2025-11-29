@@ -17,7 +17,7 @@ export default async function CampaignsPage() {
     },
     include: {
       categories: true,
-      products: {
+      directProducts: {
         select: {
           id: true,
           name: true,
@@ -40,7 +40,7 @@ export default async function CampaignsPage() {
         },
       },
       _count: {
-        select: { products: true },
+        select: { directProducts: true },
       },
     },
     orderBy: { createdAt: 'desc' },

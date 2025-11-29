@@ -24,7 +24,7 @@ interface CampaignCardProps {
     minPurchaseAmount?: number | null
     startDate: Date
     endDate: Date
-    products: Array<{
+    directProducts: Array<{
       id: string
       name: string
       slug: string
@@ -68,9 +68,9 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
           quantity: pp.quantity,
         })
       })
-    } else if (campaign.products.length > 0) {
+    } else if (campaign.directProducts.length > 0) {
       // Add first product from campaign
-      const product = campaign.products[0]
+      const product = campaign.directProducts[0]
       const mainImage = product.images[0]?.url || '/placeholder-product.jpg'
       addItem({
         productId: product.id,
@@ -105,23 +105,28 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
   }
 
   return (
-    <Card className="hover:shadow-lg transition h-full flex flex-col group">
-      <Link href={`/kampanya/${campaign.id}`} className="relative w-full h-48 overflow-hidden rounded-t-lg">
-        {campaign.imageUrl ? (
+    <Card className="hover:shadow-lg transition h-full flex flex-col group overflow-hidden">
+      {/* Kapak Görseli - 16:9 Aspect Ratio */}
+      {campaign.imageUrl ? (
+        <Link href={`/kampanya/${campaign.id}`} className="relative w-full aspect-video overflow-hidden block rounded-t-lg">
           <Image
             src={campaign.imageUrl}
             alt={campaign.title}
             fill
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            className="object-cover group-hover:scale-110 transition-transform duration-500"
             loading="lazy"
+            unoptimized={campaign.imageUrl.includes('supabase.co') || campaign.imageUrl.includes('supabase.in')}
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            priority={false}
           />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-            <Package className="h-16 w-16 text-primary/50" />
-          </div>
-        )}
-        <Badge className="absolute top-3 right-3 bg-red-500">Kampanya</Badge>
-      </Link>
+          <Badge className="absolute top-3 right-3 bg-red-500 text-white shadow-lg z-10">Kampanya</Badge>
+        </Link>
+      ) : (
+        <div className="relative w-full aspect-video bg-gradient-to-br from-primary/20 via-accent/20 to-primary/10 flex items-center justify-center rounded-t-lg">
+          <Package className="h-20 w-20 text-primary/50" />
+          <Badge className="absolute top-3 right-3 bg-red-500 text-white shadow-lg z-10">Kampanya</Badge>
+        </div>
+      )}
       
       <CardContent className="p-6 flex-1 flex flex-col">
         <div className="mb-4">
@@ -191,9 +196,9 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
             </div>
           )}
 
-          {campaign.type === 'PRODUCT' && campaign.products.length > 0 && (
+          {campaign.type === 'PRODUCT' && campaign.directProducts.length > 0 && (
             <div className="text-sm text-gray-600">
-              <p className="font-semibold">{campaign.products.length} ürün</p>
+              <p className="font-semibold">{campaign.directProducts.length} ürün</p>
             </div>
           )}
 
@@ -202,28 +207,30 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
             {new Date(campaign.endDate).toLocaleDateString('tr-TR')}
           </p>
 
-          {/* Action Buttons */}
-          <div className="flex gap-2 mt-4">
-            <Button
-              onClick={handleAddToCart}
-              disabled={adding || (campaign.type !== 'PACKAGE' && campaign.products.length === 0)}
-              className="flex-1 bg-gradient-to-r from-primary to-accent hover:shadow-neon-lg text-white"
-              size="sm"
-            >
-              <ShoppingCart className="h-4 w-4 mr-2" />
-              {adding ? 'Ekleniyor...' : 'Sepete Ekle'}
-            </Button>
-            <Button
-              onClick={handleBuyNow}
-              disabled={adding || (campaign.type !== 'PACKAGE' && campaign.products.length === 0)}
-              variant="outline"
-              className="flex-1 border-primary hover:bg-primary hover:text-white"
-              size="sm"
-            >
-              <Zap className="h-4 w-4 mr-2" />
-              Hızlı Al
-            </Button>
-          </div>
+          {/* Action Buttons - Sadece PACKAGE tipi için göster */}
+          {campaign.type === 'PACKAGE' && (
+            <div className="flex gap-2 mt-4">
+              <Button
+                onClick={handleAddToCart}
+                disabled={adding || campaign.packageProducts.length === 0}
+                className="flex-1 bg-gradient-to-r from-primary to-accent hover:shadow-neon-lg text-white"
+                size="sm"
+              >
+                <ShoppingCart className="h-4 w-4 mr-2" />
+                {adding ? 'Ekleniyor...' : 'Sepete Ekle'}
+              </Button>
+              <Button
+                onClick={handleBuyNow}
+                disabled={adding || campaign.packageProducts.length === 0}
+                variant="outline"
+                className="flex-1 border-primary hover:bg-primary hover:text-white"
+                size="sm"
+              >
+                <Zap className="h-4 w-4 mr-2" />
+                Hızlı Al
+              </Button>
+            </div>
+          )}
 
           <Link href={`/kampanya/${campaign.id}`}>
             <Button variant="ghost" className="w-full mt-2" size="sm">
