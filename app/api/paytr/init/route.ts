@@ -96,6 +96,8 @@ function createPaytrToken(
  */
 function buildPaytrParams(
   merchant_id: string,
+  merchant_key: string,
+  merchant_salt: string,
   user_ip: string,
   merchant_oid: string,
   email: string,
@@ -116,6 +118,8 @@ function buildPaytrParams(
 ): URLSearchParams {
   const params = new URLSearchParams()
   params.append('merchant_id', String(merchant_id))
+  params.append('merchant_key', String(merchant_key))
+  params.append('merchant_salt', String(merchant_salt))
   params.append('user_ip', String(user_ip))
   params.append('merchant_oid', String(merchant_oid))
   params.append('email', String(email))
@@ -133,7 +137,7 @@ function buildPaytrParams(
   params.append('user_city', String(user_city))
   params.append('user_country', String(user_country))
   params.append('lang', 'tr')
-  params.append('debug_on', '0')
+  params.append('debug_on', '1')
   params.append('paytr_token', String(paytr_token))
   return params
 }
@@ -233,6 +237,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaytrInitResp
     // Build POST parameters
     const params = buildPaytrParams(
       merchant_id,
+      merchant_key,
+      merchant_salt,
       user_ip,
       merchant_oid,
       body.email,
