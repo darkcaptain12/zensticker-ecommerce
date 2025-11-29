@@ -78,17 +78,29 @@ export async function GET(request: NextRequest) {
       })),
     }
 
-    // Save log to file
-    const logsDir = path.join(process.cwd(), 'logs')
-    if (!existsSync(logsDir)) {
-      await mkdir(logsDir, { recursive: true })
+    // Save log to file (optional - continue even if it fails)
+    let logFileName: string | null = null
+    try {
+      // Try to use /tmp in serverless environments, fallback to logs directory
+      const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME
+      const logsDir = isServerless 
+        ? '/tmp/logs' 
+        : path.join(process.cwd(), 'logs')
+      
+      if (!existsSync(logsDir)) {
+        await mkdir(logsDir, { recursive: true })
+      }
+
+      logFileName = `order-cleanup-${new Date().toISOString().split('T')[0]}.json`
+      const logFilePath = path.join(logsDir, logFileName)
+      await writeFile(logFilePath, JSON.stringify(logEntry, null, 2), 'utf-8')
+
+      console.log(`📝 Log saved to: ${logFilePath}`)
+    } catch (logError: any) {
+      // Log writing failed, but continue with cleanup
+      console.warn('⚠️ Log dosyası yazılamadı (devam ediliyor):', logError.message)
+      console.log('📝 Log entry:', JSON.stringify(logEntry, null, 2))
     }
-
-    const logFileName = `order-cleanup-${new Date().toISOString().split('T')[0]}.json`
-    const logFilePath = path.join(logsDir, logFileName)
-    await writeFile(logFilePath, JSON.stringify(logEntry, null, 2), 'utf-8')
-
-    console.log(`📝 Log saved to: ${logFilePath}`)
 
     // Delete order items first (foreign key constraint)
     const deletedItems = await prisma.orderItem.deleteMany({})
@@ -103,7 +115,7 @@ export async function GET(request: NextRequest) {
       message: 'Orders cleaned up successfully',
       deletedOrders: deletedOrders.count,
       deletedItems: deletedItems.count,
-      logFile: logFileName,
+      logFile: logFileName || 'Log file could not be written (check console logs)',
     })
   } catch (error: any) {
     console.error('❌ Order cleanup error:', error)
