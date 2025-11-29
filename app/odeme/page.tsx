@@ -43,7 +43,12 @@ export default function CheckoutPage() {
 
   // Site ayarlarını yükle
   useEffect(() => {
-    fetch('/api/site-settings')
+    fetch('/api/site-settings', {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache',
+      },
+    })
       .then(res => res.json())
       .then(data => {
         setShippingSettings({

@@ -18,7 +18,12 @@ export default function CartPage() {
   }>({ freeShippingThreshold: null, shippingCost: 25 })
 
   useEffect(() => {
-    fetch('/api/site-settings')
+    fetch('/api/site-settings', {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache',
+      },
+    })
       .then(res => res.json())
       .then(data => {
         setShippingSettings({
