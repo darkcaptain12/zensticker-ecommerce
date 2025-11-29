@@ -16,7 +16,7 @@ interface PaytrInitRequest {
   installment?: number
   basketItems: Array<{
     name: string
-    price: number
+    price: number      // TL cinsinden (ör: 350)
     quantity?: number
   }>
 }
@@ -35,30 +35,24 @@ interface PaytrApiResponse {
 }
 
 /**
- * Get client IP address (Vercel compatible)
- */
-function getClientIp(req: NextRequest): string {
-  const xff = req.headers.get('x-forwarded-for')
-  if (xff) {
-    return xff.split(',')[0].trim()
-  }
-  return '127.0.0.1'
-}
-
-/**
- * Build user_basket as base64 encoded JSON array
+ * Basket -> base64(JSON)
+ * Örnek: [["Ürün","18.00","1"], ...]
  */
 function buildUserBasket(items: Array<{ name: string; price: number; quantity?: number }>): string {
   const basket = items.map((item) => [
     String(item.name).substring(0, 255),
-    Math.round(item.price * 100).toString(),
+    Number(item.price).toFixed(2),          // PayTR örneği: 2 ondalık
     String(item.quantity || 1),
   ])
   return Buffer.from(JSON.stringify(basket), 'utf-8').toString('base64')
 }
 
 /**
- * Create PayTR token (HMAC-SHA256 hash)
+ * PayTR token üretimi (HMAC-SHA256)
+ * Sıra dokümandakiyle bire bir:
+ * merchant_id + user_ip + merchant_oid + email + payment_amount +
+ * user_basket + no_installment + max_installment + currency + test_mode
+ * Sonra + merchant_salt, HMAC-SHA256(merchant_key) ve base64
  */
 function createPaytrToken(
   merchant_id: string,
@@ -84,15 +78,16 @@ function createPaytrToken(
     String(no_installment) +
     String(max_installment) +
     String(currency) +
-    String(test_mode);
+    String(test_mode)
 
-  const paytrTokenStr = hashStr + String(merchant_salt);
+  const paytrTokenStr = hashStr + String(merchant_salt)
 
-  return crypto.createHmac('sha256', merchant_key).update(paytrTokenStr).digest('base64');
+  return crypto.createHmac('sha256', merchant_key).update(paytrTokenStr).digest('base64')
 }
 
 /**
- * Build PayTR POST parameters
+ * PayTR POST parametreleri
+ * NodeJS örneğine çok yakın
  */
 function buildPaytrParams(
   merchant_id: string,
@@ -117,34 +112,43 @@ function buildPaytrParams(
   paytr_token: string
 ): URLSearchParams {
   const params = new URLSearchParams()
-  params.append('merchant_id', String(merchant_id))
-  params.append('merchant_key', String(merchant_key))
-  params.append('merchant_salt', String(merchant_salt))
-  params.append('user_ip', String(user_ip))
-  params.append('merchant_oid', String(merchant_oid))
-  params.append('email', String(email))
-  params.append('payment_amount', String(payment_amount))
-  params.append('user_basket', String(user_basket))
-  params.append('no_installment', String(no_installment))
-  params.append('max_installment', String(max_installment))
-  params.append('currency', String(currency))
-  params.append('test_mode', String(test_mode))
-  params.append('merchant_ok_url', String(merchant_ok_url))
-  params.append('merchant_fail_url', String(merchant_fail_url))
-  params.append('user_name', String(user_name))
-  params.append('user_address', String(user_address))
-  params.append('user_phone', String(user_phone))
-  params.append('user_city', String(user_city))
-  params.append('user_country', String(user_country))
-  params.append('lang', 'tr')
-  params.append('debug_on', '1')
-  params.append('paytr_token', String(paytr_token))
+
+  // PayTR Node örneği merchant_key ve merchant_salt'ı da gönderiyor
+  params.append('merchant_id', merchant_id)
+  params.append('merchant_key', merchant_key)
+  params.append('merchant_salt', merchant_salt)
+
+  params.append('user_ip', user_ip)
+  params.append('merchant_oid', merchant_oid)
+  params.append('email', email)
+  params.append('payment_amount', payment_amount)
+  params.append('user_basket', user_basket)
+
+  const timeout_limit = '30'
+  const debug_on = '1'   // sorun çözülene kadar 1, sonra 0 yap
+  const lang = 'tr'
+
+  params.append('no_installment', no_installment)
+  params.append('max_installment', max_installment)
+  params.append('currency', currency)
+  params.append('test_mode', test_mode)
+  params.append('merchant_ok_url', merchant_ok_url)
+  params.append('merchant_fail_url', merchant_fail_url)
+  params.append('user_name', user_name)
+  params.append('user_address', user_address)
+  params.append('user_phone', user_phone)
+  params.append('user_city', user_city)
+  params.append('user_country', user_country)
+  params.append('timeout_limit', timeout_limit)
+  params.append('debug_on', debug_on)
+  params.append('lang', lang)
+  params.append('paytr_token', paytr_token)
+
   return params
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse<PaytrInitResponse>> {
   try {
-    // Validate environment variables
     const merchant_id = process.env.PAYTR_MERCHANT_ID?.trim()
     const merchant_key = process.env.PAYTR_MERCHANT_KEY?.trim()
     const merchant_salt = process.env.PAYTR_MERCHANT_SALT?.trim()
@@ -153,18 +157,13 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaytrInitResp
 
     if (!merchant_id || !merchant_key || !merchant_salt || !baseUrl) {
       return NextResponse.json(
-        {
-          ok: false,
-          error: 'PAYTR configuration is missing on server',
-        },
+        { ok: false, error: 'PAYTR configuration is missing on server' },
         { status: 500 }
       )
     }
 
-    // Parse request body
     const body: PaytrInitRequest = await req.json()
 
-    // Validate required fields
     if (
       !body.orderNumber ||
       !body.amount ||
@@ -177,18 +176,15 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaytrInitResp
       body.basketItems.length === 0
     ) {
       return NextResponse.json(
-        {
-          ok: false,
-          error: 'Missing required fields',
-        },
+        { ok: false, error: 'Missing required fields' },
         { status: 400 }
       )
     }
 
-    // Get client IP
-    const user_ip = getClientIp(req)
+    // Canlıda IP farklılıklarını elemek için sabit IP kullanıyoruz
+    // (PayTR için yeterli, hash ile uyumlu olduğu sürece sorun yok)
+    const user_ip = '127.0.0.1'
 
-    // Compute PayTR values
     const payment_amount = Math.round(body.amount * 100).toString()
     const installment = body.installment || 0
     const no_installment = '0'
@@ -196,29 +192,23 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaytrInitResp
     const currency = 'TL'
     const test_mode = test_mode_env === '1' ? '1' : '0'
 
-    // Build URLs
     const baseUrlClean = baseUrl.replace(/\/$/, '')
     const merchant_ok_url = `${baseUrlClean}/odeme/paytr-success`
     const merchant_fail_url = `${baseUrlClean}/odeme/paytr-fail`
 
-    // Build user basket
     const user_basket = buildUserBasket(body.basketItems)
 
-    // Prepare user fields
     const user_name = String(body.userName).substring(0, 60)
     const user_address = String(body.userAddress).substring(0, 400)
     const user_phone = String(body.userPhone).replace(/\s/g, '').substring(0, 20)
     const user_city = String(body.userCity).substring(0, 50)
     const user_country = String(body.userCountry || 'Türkiye').substring(0, 50)
 
-    // PayTR merchant_oid sadece alfanumerik olmalı
     let merchant_oid = String(body.orderNumber || '').replace(/[^A-Za-z0-9]/g, '')
-
     if (!merchant_oid) {
       merchant_oid = 'ZS' + Date.now().toString()
     }
 
-    // Create PayTR token
     const paytr_token = createPaytrToken(
       merchant_id,
       user_ip,
@@ -234,7 +224,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaytrInitResp
       merchant_salt
     )
 
-    // Build POST parameters
     const params = buildPaytrParams(
       merchant_id,
       merchant_key,
@@ -258,7 +247,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaytrInitResp
       paytr_token
     )
 
-    // Make request to PayTR
     const response = await fetch('https://www.paytr.com/odeme/api/get-token', {
       method: 'POST',
       headers: {
@@ -276,26 +264,20 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaytrInitResp
 
     let data: PaytrApiResponse | null = null
 
-    // Gövde tamamen boşsa, direkt HTTP hata bilgisi dön
     if (!raw || raw.trim().length === 0) {
       console.error('PayTR boş yanıt döndürdü. HTTP:', statusCode, statusText)
       return NextResponse.json(
-        {
-          ok: false,
-          error: `PayTR boş yanıt döndürdü (HTTP ${statusCode} ${statusText})`,
-        },
+        { ok: false, error: `PayTR boş yanıt döndürdü (HTTP ${statusCode} ${statusText})` },
         { status: 400 }
       )
     }
 
-    // Öncelikle JSON olarak parse etmeyi dene
     try {
       data = JSON.parse(raw) as PaytrApiResponse
-    } catch (e) {
+    } catch {
       console.warn('PayTR get-token JSON parse edilemedi, URLSearchParams deneniyor. Raw:', raw)
     }
 
-    // JSON değilse, URL-encoded formatta olabilir: status=success&token=...
     if (!data) {
       try {
         const paramsResp = new URLSearchParams(raw)
@@ -306,12 +288,11 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaytrInitResp
         if (status) {
           data = { status, token, reason }
         }
-      } catch (e) {
+      } catch {
         console.warn('PayTR get-token URLSearchParams parse edilemedi. Raw:', raw)
       }
     }
 
-    // Hâlâ veri yoksa, en azından ham cevabı reason olarak göster
     if (!data) {
       console.error('PayTR get-token unknown response, fallback failed. Raw:', raw)
       data = {
@@ -330,10 +311,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaytrInitResp
       const errorReason = data.reason || 'PayTR token alınamadı'
       console.error('PayTR get-token error:', errorReason, 'raw:', raw)
       return NextResponse.json(
-        {
-          ok: false,
-          error: errorReason,
-        },
+        { ok: false, error: errorReason },
         { status: 400 }
       )
     }
@@ -341,10 +319,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaytrInitResp
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     console.error('PayTR init error:', errorMessage)
     return NextResponse.json(
-      {
-        ok: false,
-        error: errorMessage,
-      },
+      { ok: false, error: errorMessage },
       { status: 500 }
     )
   }
