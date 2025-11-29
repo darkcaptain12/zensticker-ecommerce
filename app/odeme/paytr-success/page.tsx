@@ -114,11 +114,12 @@ async function OrderSuccessContent({ orderNumber }: { orderNumber: string }) {
         }
       })
       
-      console.log(`✅ Success page: Order ${order.orderNumber} updated to PAID`)
+      const updatedOrderNumber = order.orderNumber
+      console.log(`✅ Success page: Order ${updatedOrderNumber} updated to PAID`)
       
       // Siparişi tekrar yükle (güncellenmiş durumla)
       order = await prisma.order.findUnique({
-        where: { orderNumber: order.orderNumber },
+        where: { orderNumber: updatedOrderNumber },
         include: {
           items: {
             include: {
@@ -140,7 +141,8 @@ async function OrderSuccessContent({ orderNumber }: { orderNumber: string }) {
         },
       })
     } catch (error) {
-      console.error(`❌ Success page: Error updating order ${order.orderNumber}:`, error)
+      const orderNumberForError = order?.orderNumber || orderNumber
+      console.error(`❌ Success page: Error updating order ${orderNumberForError}:`, error)
     }
   }
 
@@ -263,24 +265,24 @@ export default async function PaytrSuccessPage({
           {orderNumber ? (
             <OrderSuccessContent orderNumber={orderNumber} />
           ) : (
-            <Card>
-              <CardHeader className="text-center">
-                <div className="flex justify-center mb-4">
-                  <CheckCircle className="h-16 w-16 text-green-600" />
-                </div>
-                <CardTitle className="text-2xl">Ödeme Başarılı!</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center space-y-4">
-                <p className="text-gray-600">
-                  Ödemeniz başarıyla tamamlandı. Siparişiniz en kısa sürede hazırlanacaktır.
-                </p>
-                <div className="pt-4">
-                  <Link href="/">
-                    <Button className="w-full">Ana Sayfaya Dön</Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
+        <Card>
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <CheckCircle className="h-16 w-16 text-green-600" />
+            </div>
+            <CardTitle className="text-2xl">Ödeme Başarılı!</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <p className="text-gray-600">
+              Ödemeniz başarıyla tamamlandı. Siparişiniz en kısa sürede hazırlanacaktır.
+            </p>
+            <div className="pt-4">
+              <Link href="/">
+                <Button className="w-full">Ana Sayfaya Dön</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
           )}
         </Suspense>
       </div>
