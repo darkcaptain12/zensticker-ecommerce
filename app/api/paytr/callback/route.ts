@@ -11,8 +11,11 @@ import { prisma } from '@/lib/prisma'
  * PayTR her zaman "OK" bekler, bu yüzden hata olsa bile "OK" dönüyoruz.
  */
 export async function POST(request: NextRequest) {
-  // Her zaman log (production'da da)
-  console.log('🔔 PayTR Callback endpoint called')
+  // Her zaman log (production'da da) - TÜM LOGLAR
+  const timestamp = new Date().toISOString()
+  console.log('='.repeat(80))
+  console.log(`🔔 PayTR Callback endpoint called at ${timestamp}`)
+  console.log('='.repeat(80))
   
   try {
     // PayTR form-urlencoded olarak gönderir
@@ -24,14 +27,15 @@ export async function POST(request: NextRequest) {
     const hash = formData.get('hash') as string | null
     const paymentId = formData.get('payment_id') as string | null
 
-    // Her zaman log (production'da da)
+    // Her zaman log (production'da da) - TÜM VERİLER
     console.log('📥 PayTR Callback received:', {
       merchantOid,
       status,
       totalAmount,
-      paymentId: paymentId ? paymentId.substring(0, 10) + '...' : null,
-      hash: hash ? hash.substring(0, 20) + '...' : null,
+      paymentId: paymentId || null,
+      hash: hash || null,
       timestamp: new Date().toISOString(),
+      allFormData: Object.fromEntries(formData.entries()), // Tüm form verilerini logla
     })
 
     // merchant_oid yoksa işlem yapma
@@ -252,14 +256,16 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      // Her zaman log
-      console.log(`✅ Order updated to PAID and stock reduced: ${merchantOid}`, {
-        orderId: order.id,
-        paymentId,
-        totalAmount,
-        itemsCount: order.items.length,
-        timestamp: new Date().toISOString(),
-      })
+      // Her zaman log - BAŞARILI
+      console.log('='.repeat(80))
+      console.log(`✅✅✅ ORDER UPDATED TO PAID SUCCESSFULLY ✅✅✅`)
+      console.log(`Order Number: ${order.orderNumber}`)
+      console.log(`Order ID: ${order.id}`)
+      console.log(`Payment ID: ${paymentId}`)
+      console.log(`Total Amount: ${totalAmount}`)
+      console.log(`Items Count: ${order.items.length}`)
+      console.log(`Timestamp: ${new Date().toISOString()}`)
+      console.log('='.repeat(80))
     } else {
       // Ödeme başarısız veya iptal edildi - sadece durumu güncelle (stok azaltma)
       await prisma.order.update({
@@ -286,12 +292,15 @@ export async function POST(request: NextRequest) {
     return new NextResponse('OK', { status: 200 })
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    const errorStack = error instanceof Error ? error.stack : 'No stack trace'
     
-    console.error('PayTR callback error:', errorMessage)
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.error('PayTR callback full error:', error)
-    }
+    // Her zaman detaylı hata logu
+    console.error('='.repeat(80))
+    console.error('❌❌❌ PAYTR CALLBACK ERROR ❌❌❌')
+    console.error(`Error Message: ${errorMessage}`)
+    console.error(`Error Stack: ${errorStack}`)
+    console.error(`Timestamp: ${new Date().toISOString()}`)
+    console.error('='.repeat(80))
     
     // PayTR'a hata olsa bile "OK" dön (retry'i önlemek için)
     return new NextResponse('OK', { status: 200 })
