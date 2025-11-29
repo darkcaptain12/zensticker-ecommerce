@@ -8,7 +8,8 @@ import { CheckCircle, Package } from 'lucide-react'
 import { formatPrice } from '@/lib/utils'
 
 async function OrderSuccessContent({ orderNumber }: { orderNumber: string }) {
-  const order = await prisma.order.findUnique({
+  // Önce siparişi bul (temizlenmiş orderNumber ile de dene)
+  let order = await prisma.order.findUnique({
     where: { orderNumber },
     include: {
       items: {
@@ -18,10 +19,130 @@ async function OrderSuccessContent({ orderNumber }: { orderNumber: string }) {
               images: { where: { isMain: true }, take: 1 },
             },
           },
+          variant: {
+            select: {
+              id: true,
+              stock: true,
+              name: true,
+              value: true,
+            },
+          },
         },
       },
     },
   })
+
+  // Eğer bulunamadıysa, temizlenmiş orderNumber ile ara (PayTR merchant_oid formatı)
+  if (!order) {
+    const cleanedOrderNumber = orderNumber.replace(/[^A-Za-z0-9]/g, '')
+    const recentOrders = await prisma.order.findMany({
+      where: {
+        status: 'AWAITING_PAYMENT',
+        createdAt: {
+          gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        },
+      },
+      select: { orderNumber: true },
+      take: 50,
+    })
+    
+    for (const recentOrder of recentOrders) {
+      const cleaned = recentOrder.orderNumber.replace(/[^A-Za-z0-9]/g, '')
+      if (cleaned === cleanedOrderNumber) {
+        order = await prisma.order.findUnique({
+          where: { orderNumber: recentOrder.orderNumber },
+          include: {
+            items: {
+              include: {
+                product: {
+                  include: {
+                    images: { where: { isMain: true }, take: 1 },
+                  },
+                },
+                variant: {
+                  select: {
+                    id: true,
+                    stock: true,
+                    name: true,
+                    value: true,
+                  },
+                },
+              },
+            },
+          },
+        })
+        break
+      }
+    }
+  }
+
+  // Eğer sipariş bulundu ve AWAITING_PAYMENT durumundaysa, PAID yap ve stok azalt
+  if (order && order.status === 'AWAITING_PAYMENT') {
+    console.log(`🔄 Success page: Updating order ${order.orderNumber} from AWAITING_PAYMENT to PAID`)
+    
+    try {
+      await prisma.$transaction(async (tx) => {
+        // Siparişi PAID yap
+        await tx.order.update({
+          where: { id: order!.id },
+          data: { status: 'PAID' },
+        })
+
+        // Stok azalt
+        for (const item of order!.items) {
+          if (item.variant) {
+            // Varyantlı ürün
+            await tx.productVariant.update({
+              where: { id: item.variant.id },
+              data: {
+                stock: {
+                  decrement: item.quantity,
+                },
+              },
+            })
+          } else {
+            // Varyantsız ürün
+            await tx.product.update({
+              where: { id: item.product.id },
+              data: {
+                stock: {
+                  decrement: item.quantity,
+                },
+              },
+            })
+          }
+        }
+      })
+      
+      console.log(`✅ Success page: Order ${order.orderNumber} updated to PAID`)
+      
+      // Siparişi tekrar yükle (güncellenmiş durumla)
+      order = await prisma.order.findUnique({
+        where: { orderNumber: order.orderNumber },
+        include: {
+          items: {
+            include: {
+              product: {
+                include: {
+                  images: { where: { isMain: true }, take: 1 },
+                },
+              },
+              variant: {
+                select: {
+                  id: true,
+                  stock: true,
+                  name: true,
+                  value: true,
+                },
+              },
+            },
+          },
+        },
+      })
+    } catch (error) {
+      console.error(`❌ Success page: Error updating order ${order.orderNumber}:`, error)
+    }
+  }
 
   if (!order) {
     // Sipariş bulunamadı ama ödeme başarılı mesajı göster
