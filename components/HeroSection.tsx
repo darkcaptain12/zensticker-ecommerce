@@ -7,6 +7,28 @@ import { ArrowRight, Sparkles, TrendingUp, Award } from 'lucide-react'
 
 export function HeroSection() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
+  const [particles, setParticles] = useState<Array<{
+    left: number
+    width: number
+    height: number
+    animationDelay: number
+    animationDuration: number
+  }>>([])
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    
+    // Particles'ı sadece client-side'da oluştur (hydration hatasını önlemek için)
+    const particleData = Array.from({ length: 20 }, () => ({
+      left: Math.random() * 100,
+      width: Math.random() * 10 + 5,
+      height: Math.random() * 10 + 5,
+      animationDelay: Math.random() * 20,
+      animationDuration: Math.random() * 10 + 15,
+    }))
+    setParticles(particleData)
+  }, [])
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -31,21 +53,23 @@ export function HeroSection() {
       />
       
       {/* Particles - Only in dark mode */}
-      <div className="particles hidden dark:block">
-        {[...Array(20)].map((_, i) => (
-          <div
-            key={i}
-            className="particle"
-            style={{
-              left: `${Math.random() * 100}%`,
-              width: `${Math.random() * 10 + 5}px`,
-              height: `${Math.random() * 10 + 5}px`,
-              animationDelay: `${Math.random() * 20}s`,
-              animationDuration: `${Math.random() * 10 + 15}s`,
-            }}
-          />
-        ))}
-      </div>
+      {mounted && (
+        <div className="particles hidden dark:block">
+          {particles.map((particle, i) => (
+            <div
+              key={i}
+              className="particle"
+              style={{
+                left: `${particle.left}%`,
+                width: `${particle.width}px`,
+                height: `${particle.height}px`,
+                animationDelay: `${particle.animationDelay}s`,
+                animationDuration: `${particle.animationDuration}s`,
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Content */}
       <div className="relative z-10 container mx-auto px-4 text-center">

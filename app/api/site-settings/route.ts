@@ -21,6 +21,8 @@ export async function GET() {
       footerLogoPath: settings.footerLogoPath,
       socialProofEnabled: settings.socialProofEnabled,
       mockupEditorEnabled: settings.mockupEditorEnabled,
+      freeShippingThreshold: settings.freeShippingThreshold,
+      shippingCost: settings.shippingCost,
     })
   } catch (error) {
     console.error('Error fetching site settings:', error)

@@ -20,6 +20,8 @@ interface SiteSettings {
   videoBackgroundUrl?: string | null
   socialProofEnabled?: boolean
   mockupEditorEnabled?: boolean
+  freeShippingThreshold?: number | null
+  shippingCost?: number | null
 }
 
 export function SiteSettingsForm({ settings }: { settings: SiteSettings | null | undefined }) {
@@ -35,6 +37,8 @@ export function SiteSettingsForm({ settings }: { settings: SiteSettings | null |
     videoBackgroundUrl: settings?.videoBackgroundUrl || '',
     socialProofEnabled: settings?.socialProofEnabled ?? true,
     mockupEditorEnabled: settings?.mockupEditorEnabled ?? true,
+    freeShippingThreshold: settings?.freeShippingThreshold ?? null,
+    shippingCost: settings?.shippingCost ?? 25,
   })
   const [uploadingVideo, setUploadingVideo] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -344,6 +348,52 @@ export function SiteSettingsForm({ settings }: { settings: SiteSettings | null |
         </div>
       </div>
       
+      <div className="border-t pt-4 space-y-4">
+        <h3 className="text-lg font-semibold">Kargo Ayarları</h3>
+        
+        <div>
+          <Label htmlFor="freeShippingThreshold">Ücretsiz Kargo Eşiği (₺)</Label>
+          <Input
+            id="freeShippingThreshold"
+            type="number"
+            step="0.01"
+            min="0"
+            value={formData.freeShippingThreshold ?? ''}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                freeShippingThreshold: e.target.value ? parseFloat(e.target.value) : null,
+              })
+            }
+            placeholder="200"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Bu tutar ve üzeri siparişlerde kargo ücretsiz olur. Boş bırakılırsa her zaman ücretsiz kargo uygulanır.
+          </p>
+        </div>
+
+        <div>
+          <Label htmlFor="shippingCost">Kargo Ücreti (₺)</Label>
+          <Input
+            id="shippingCost"
+            type="number"
+            step="0.01"
+            min="0"
+            value={formData.shippingCost ?? 25}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                shippingCost: e.target.value ? parseFloat(e.target.value) : 0,
+              })
+            }
+            placeholder="25"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Ücretsiz kargo eşiğinin altındaki siparişler için uygulanacak kargo ücreti.
+          </p>
+        </div>
+      </div>
+
       <div className="border-t pt-4 space-y-4">
         <h3 className="text-lg font-semibold">Özellik Ayarları</h3>
         

@@ -22,6 +22,12 @@ export async function POST(request: NextRequest) {
       videoBackgroundUrl: data.videoBackgroundUrl || null,
       socialProofEnabled: data.socialProofEnabled ?? true,
       mockupEditorEnabled: data.mockupEditorEnabled ?? true,
+      freeShippingThreshold: data.freeShippingThreshold !== undefined && data.freeShippingThreshold !== null && data.freeShippingThreshold !== '' 
+        ? parseFloat(data.freeShippingThreshold) 
+        : null,
+      shippingCost: data.shippingCost !== undefined && data.shippingCost !== null && data.shippingCost !== ''
+        ? parseFloat(data.shippingCost)
+        : 25,
     }
 
     await prisma.siteSettings.upsert({

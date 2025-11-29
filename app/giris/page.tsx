@@ -1,22 +1,38 @@
 'use client'
 
-import { useState } from 'react'
-import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { signIn, useSession } from 'next-auth/react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const { data: session, status, update } = useSession()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   })
+
+  // Eğer zaten giriş yapılmışsa yönlendir
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user) {
+      const callbackUrl = searchParams.get('callbackUrl')
+      if (callbackUrl) {
+        router.push(callbackUrl)
+      } else if (session.user.role === 'ADMIN') {
+        router.push('/admin')
+      } else {
+        router.push('/')
+      }
+    }
+  }, [session, status, router, searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,19 +47,55 @@ export default function LoginPage() {
       })
 
       if (result?.error) {
-        console.error('Login error:', result.error)
         setError('E-posta veya şifre hatalı')
         setLoading(false)
-      } else if (result?.ok) {
-        router.push('/')
-        router.refresh()
-      } else {
-        setError('Giriş yapılamadı. Lütfen tekrar deneyin.')
-        setLoading(false)
+        return
+      }
+
+      if (result?.ok) {
+        console.log('✅ Giriş başarılı! Session güncelleniyor...')
+        
+        // Session'ı güncelle
+        const updated = await update()
+        console.log('Session update result:', updated)
+        
+        // Session'ı kontrol et ve yönlendir
+        const checkAndRedirect = async () => {
+          try {
+            const sessionRes = await fetch('/api/auth/session', {
+              credentials: 'include',
+              cache: 'no-store',
+            })
+            const sessionData = await sessionRes.json()
+            
+            console.log('📋 Session data:', sessionData)
+            console.log('👤 User role:', sessionData?.user?.role)
+            
+            const callbackUrl = searchParams.get('callbackUrl')
+            
+            if (callbackUrl) {
+              console.log('🔀 Yönlendiriliyor:', callbackUrl)
+              window.location.href = callbackUrl
+            } else if (sessionData?.user?.role === 'ADMIN') {
+              console.log('🔀 Admin paneline yönlendiriliyor')
+              window.location.href = '/admin'
+            } else {
+              console.log('🔀 Ana sayfaya yönlendiriliyor')
+              window.location.href = '/'
+            }
+          } catch (err) {
+            console.error('❌ Session kontrol hatası:', err)
+            // Hata olsa bile admin'e yönlendir (admin olabilir)
+            window.location.href = '/admin'
+          }
+        }
+        
+        // 500ms bekle ve kontrol et
+        setTimeout(checkAndRedirect, 500)
       }
     } catch (error) {
       console.error('Login exception:', error)
-      setError('Bir hata oluştu: ' + (error instanceof Error ? error.message : 'Bilinmeyen hata'))
+      setError('Bir hata oluştu')
       setLoading(false)
     }
   }
@@ -100,6 +152,29 @@ export default function LoginPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-4 py-16">
+        <div className="max-w-md mx-auto">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl text-center">Giriş Yap</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <p className="text-gray-600">Yükleniyor...</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   )
 }
 

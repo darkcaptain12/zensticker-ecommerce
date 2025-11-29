@@ -31,10 +31,29 @@ export default function CheckoutPage() {
     acikAdres: '',
   })
   const [selectedIlceler, setSelectedIlceler] = useState<string[]>([])
+  const [shippingSettings, setShippingSettings] = useState<{
+    freeShippingThreshold: number | null
+    shippingCost: number | null
+  }>({ freeShippingThreshold: null, shippingCost: 25 })
 
   // Client-side mount kontrolü
   useEffect(() => {
     setMounted(true)
+  }, [])
+
+  // Site ayarlarını yükle
+  useEffect(() => {
+    fetch('/api/site-settings')
+      .then(res => res.json())
+      .then(data => {
+        setShippingSettings({
+          freeShippingThreshold: data.freeShippingThreshold ?? null,
+          shippingCost: data.shippingCost ?? 25,
+        })
+      })
+      .catch(() => {
+        // Default values already set
+      })
   }, [])
 
   // Sepet boşsa yönlendir (sadece client-side)
@@ -71,7 +90,18 @@ export default function CheckoutPage() {
   }
 
   // Kargo ücreti hesapla
-  const shippingCost = finalTotal >= 200 ? 0 : 25
+  const calculateShippingCost = () => {
+    if (shippingSettings.freeShippingThreshold === null) {
+      // Eşik yoksa her zaman ücretsiz
+      return 0
+    }
+    if (finalTotal >= shippingSettings.freeShippingThreshold) {
+      return 0
+    }
+    return shippingSettings.shippingCost ?? 25
+  }
+
+  const shippingCost = calculateShippingCost()
   const total = finalTotal + shippingCost
 
   const handleIlChange = (il: string) => {
@@ -316,7 +346,7 @@ export default function CheckoutPage() {
                   )}
                   <div className="flex justify-between">
                     <span>Kargo</span>
-                    <span>{finalTotal >= 200 ? 'Ücretsiz' : '25₺'}</span>
+                    <span>{shippingCost === 0 ? 'Ücretsiz' : formatPrice(shippingCost)}</span>
                   </div>
                   <div className="border-t pt-2">
                     <div className="flex justify-between font-bold text-lg">

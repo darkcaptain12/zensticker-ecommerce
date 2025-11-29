@@ -13,33 +13,37 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
+          console.log('Auth: Missing credentials')
           return null
         }
 
         try {
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email }
-        })
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email }
+          })
 
-        if (!user) {
+          if (!user) {
+            console.log('Auth: User not found for email:', credentials.email)
             // Don't reveal if user exists or not (security best practice)
-          return null
-        }
+            return null
+          }
 
-        const isPasswordValid = await bcrypt.compare(
-          credentials.password,
-          user.passwordHash
-        )
+          const isPasswordValid = await bcrypt.compare(
+            credentials.password,
+            user.passwordHash
+          )
 
-        if (!isPasswordValid) {
-          return null
-        }
+          if (!isPasswordValid) {
+            console.log('Auth: Invalid password for email:', credentials.email)
+            return null
+          }
 
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
+          console.log('Auth: Success for user:', user.email, 'Role:', user.role)
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
           }
         } catch (error) {
           console.error('Auth error:', error)
@@ -66,6 +70,13 @@ export const authOptions: NextAuthOptions = {
         session.user.name = token.name as string
       }
       return session
+    },
+    async redirect({ url, baseUrl }) {
+      // Admin kullanıcıları için /admin'e yönlendir
+      // Bu callback sadece signIn redirect: true olduğunda çalışır
+      if (url.startsWith('/')) return `${baseUrl}${url}`
+      if (new URL(url).origin === baseUrl) return url
+      return baseUrl
     }
   },
   pages: {

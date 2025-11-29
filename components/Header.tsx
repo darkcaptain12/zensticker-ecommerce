@@ -14,7 +14,7 @@ import { CategoryDropdown } from './CategoryDropdown'
 import { ThemeToggle } from './ThemeToggle'
 
 export function Header() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const { itemCount } = useCart()
   const { theme, systemTheme } = useTheme()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -22,6 +22,13 @@ export function Header() {
   const [scrolled, setScrolled] = useState(false)
   const [mockupEditorEnabled, setMockupEditorEnabled] = useState(true)
   const currentTheme = theme === 'system' ? systemTheme : theme
+  
+  // Debug: Session durumunu logla
+  useEffect(() => {
+    if (status === 'authenticated') {
+      console.log('Header - Session authenticated:', session)
+    }
+  }, [session, status])
   
   useEffect(() => {
     setMounted(true)
@@ -127,7 +134,7 @@ export function Header() {
             {/* Theme Toggle */}
             <ThemeToggle />
 
-            {session ? (
+            {status === 'authenticated' && session?.user ? (
               <>
                 <Link href="/profil/favoriler">
                   <Button variant="ghost" size="icon" className="text-foreground dark:text-white hover:bg-primary/20 hover:text-primary rounded-lg transition-all hover:scale-110 dark:hover:shadow-neon-sm relative h-8 w-8">
@@ -148,12 +155,14 @@ export function Header() {
                 )}
                 <Button
                   variant="ghost"
-                  onClick={() => signOut()}
+                  onClick={() => signOut({ callbackUrl: '/' })}
                   className="text-foreground dark:text-white hover:bg-primary/20 hover:text-primary rounded-lg transition-all dark:hover:shadow-neon-sm text-sm px-2 py-1 h-8"
                 >
                   Çıkış
                 </Button>
               </>
+            ) : status === 'loading' ? (
+              <div className="h-8 w-16 animate-pulse bg-gray-200 dark:bg-gray-700 rounded"></div>
             ) : (
               <Link href="/giris">
                 <Button variant="ghost" className="text-foreground dark:text-white hover:bg-primary/20 hover:text-primary rounded-lg transition-all dark:hover:shadow-neon-sm text-sm px-2 py-1 h-8">

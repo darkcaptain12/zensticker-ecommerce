@@ -187,6 +187,8 @@ model SiteSettings {
   seoMetaDefaults   Json?    // { title: string, description: string }
   socialProofEnabled Boolean  @default(true) // Sosyal kanıt özelliği açık/kapalı
   mockupEditorEnabled Boolean @default(true) // Mockup editörü açık/kapalı
+  freeShippingThreshold Float? // Belirli tutar üzeri ücretsiz kargo (null ise her zaman ücretsiz)
+  shippingCost         Float?  @default(25) // Kargo ücreti (freeShippingThreshold altı için)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

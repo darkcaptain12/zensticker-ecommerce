@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useCart } from '@/lib/cart-context'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -11,6 +12,39 @@ import { formatPrice } from '@/lib/utils'
 
 export default function CartPage() {
   const { items, updateQuantity, removeItem, total, clearCart, campaignDiscount, subtotal, finalTotal } = useCart()
+  const [shippingSettings, setShippingSettings] = useState<{
+    freeShippingThreshold: number | null
+    shippingCost: number | null
+  }>({ freeShippingThreshold: null, shippingCost: 25 })
+
+  useEffect(() => {
+    fetch('/api/site-settings')
+      .then(res => res.json())
+      .then(data => {
+        setShippingSettings({
+          freeShippingThreshold: data.freeShippingThreshold ?? null,
+          shippingCost: data.shippingCost ?? 25,
+        })
+      })
+      .catch(() => {
+        // Default values already set
+      })
+  }, [])
+
+  // Kargo ücreti hesapla
+  const calculateShippingCost = () => {
+    if (shippingSettings.freeShippingThreshold === null) {
+      // Eşik yoksa her zaman ücretsiz
+      return 0
+    }
+    if (finalTotal >= shippingSettings.freeShippingThreshold) {
+      return 0
+    }
+    return shippingSettings.shippingCost ?? 25
+  }
+
+  const shippingCost = calculateShippingCost()
+  const totalWithShipping = finalTotal + shippingCost
 
   if (items.length === 0) {
     return (
@@ -126,12 +160,12 @@ export default function CartPage() {
                 )}
                 <div className="flex justify-between">
                   <span>Kargo</span>
-                  <span>{finalTotal >= 200 ? 'Ücretsiz' : '25₺'}</span>
+                  <span>{shippingCost === 0 ? 'Ücretsiz' : formatPrice(shippingCost)}</span>
                 </div>
                 <div className="border-t pt-2 mt-2">
                   <div className="flex justify-between font-bold text-lg">
                     <span>Toplam</span>
-                    <span>{formatPrice(finalTotal + (finalTotal >= 200 ? 0 : 25))}</span>
+                    <span>{formatPrice(totalWithShipping)}</span>
                   </div>
                 </div>
               </div>
