@@ -54,21 +54,21 @@ export function HeroSection() {
       
       {/* Particles - Only in dark mode */}
       {mounted && (
-        <div className="particles hidden dark:block">
+      <div className="particles hidden dark:block">
           {particles.map((particle, i) => (
-            <div
-              key={i}
-              className="particle"
-              style={{
+          <div
+            key={i}
+            className="particle"
+            style={{
                 left: `${particle.left}%`,
                 width: `${particle.width}px`,
                 height: `${particle.height}px`,
                 animationDelay: `${particle.animationDelay}s`,
                 animationDuration: `${particle.animationDuration}s`,
-              }}
-            />
-          ))}
-        </div>
+            }}
+          />
+        ))}
+      </div>
       )}
 
       {/* Content */}

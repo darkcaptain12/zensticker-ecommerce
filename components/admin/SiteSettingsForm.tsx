@@ -65,21 +65,8 @@ export function SiteSettingsForm({ settings }: { settings: SiteSettings | null |
       })
 
       if (response.ok) {
+        router.refresh()
         alert('Ayarlar kaydedildi')
-        
-        // Cache'i temizle ve sayfayı yenile
-        if ('caches' in window) {
-          caches.keys().then(names => {
-            names.forEach(name => {
-              caches.delete(name)
-            })
-          })
-        }
-        
-        // Sayfayı yenile (cache temizlensin)
-        setTimeout(() => {
-          window.location.reload()
-        }, 300)
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Kaydetme başarısız' }))
         alert(errorData.error || 'Kaydetme başarısız')
@@ -406,7 +393,7 @@ export function SiteSettingsForm({ settings }: { settings: SiteSettings | null |
           </p>
         </div>
       </div>
-
+      
       <div className="border-t pt-4 space-y-4">
         <h3 className="text-lg font-semibold">Özellik Ayarları</h3>
         

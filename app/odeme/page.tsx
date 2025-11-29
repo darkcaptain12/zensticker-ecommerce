@@ -43,12 +43,7 @@ export default function CheckoutPage() {
 
   // Site ayarlarını yükle
   useEffect(() => {
-    fetch('/api/site-settings', {
-      cache: 'no-store',
-      headers: {
-        'Cache-Control': 'no-cache',
-      },
-    })
+    fetch('/api/site-settings')
       .then(res => res.json())
       .then(data => {
         setShippingSettings({
@@ -95,7 +90,7 @@ export default function CheckoutPage() {
   }
 
   // Kargo ücreti hesapla
-  const calculateShippingCost = () => {
+  const calculateShippingCost = (): number => {
     if (shippingSettings.freeShippingThreshold === null) {
       // Eşik yoksa her zaman ücretsiz
       return 0
@@ -103,11 +98,16 @@ export default function CheckoutPage() {
     if (finalTotal >= shippingSettings.freeShippingThreshold) {
       return 0
     }
-    return shippingSettings.shippingCost ?? 25
+    // shippingCost null/undefined ise 25, değilse number olarak döndür
+    const cost = shippingSettings.shippingCost ?? 25
+    return Number.isFinite(cost) ? Number(cost) : 0
   }
 
   const shippingCost = calculateShippingCost()
-  const total = finalTotal + shippingCost
+  // total hesaplaması - NaN kontrolü ile
+  const total = Number.isFinite(finalTotal) && Number.isFinite(shippingCost)
+    ? Number((finalTotal + shippingCost).toFixed(2))
+    : 0
 
   const handleIlChange = (il: string) => {
     const ilceler = getIlcelerByIl(il)
@@ -138,28 +138,70 @@ export default function CheckoutPage() {
       // Order number oluştur
       const orderNumber = generateOrderNumber()
 
+      // Amount'ı number olarak garantile (NaN kontrolü)
+      const paymentAmount = Number.isFinite(total) && total >= 0 ? Number(total) : 0
+      
+      // Basket items'ı hazırla - price'ları number olarak garantile
+      const basketItems = items.map((item) => {
+        const itemPrice = item.salePrice || item.price
+        const price = Number.isFinite(itemPrice) ? Number(itemPrice) : 0
+        const quantity = Number.isFinite(item.quantity) && item.quantity > 0 ? Number(item.quantity) : 1
+        
+        return {
+          name: String(item.name || '').substring(0, 255), // PayTR max 255 karakter
+          price: price,
+          quantity: quantity,
+        }
+      })
+
+      // Development ortamında debug log
+      if (process.env.NODE_ENV === 'development') {
+        console.log('PayTR Request Payload:', {
+          orderNumber,
+          amount: paymentAmount,
+          amountType: typeof paymentAmount,
+          email: formData.customerEmail,
+          userName: formData.customerName,
+          basketItemsCount: basketItems.length,
+          basketItems: basketItems.map(item => ({
+            name: item.name.substring(0, 30),
+            price: item.price,
+            quantity: item.quantity,
+          })),
+          shippingCost,
+          finalTotal,
+          total,
+        })
+      }
+
       // PayTR init endpoint'ine istek at
       const response = await fetch('/api/paytr/init', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           orderNumber,
-          amount: total,
-          email: formData.customerEmail,
-          userName: formData.customerName,
-          userPhone: formData.customerPhone.replace(/\s/g, ''), // Boşlukları kaldır
-          userAddress: fullAddress,
-          userCity: formData.il,
+          amount: paymentAmount, // Number olarak gönder
+          email: formData.customerEmail.trim(),
+          userName: formData.customerName.trim(),
+          userPhone: formData.customerPhone.replace(/\s/g, '').trim(), // Boşlukları kaldır
+          userAddress: fullAddress.trim(),
+          userCity: formData.il.trim(),
           userCountry: 'Türkiye',
-          basketItems: items.map((item) => ({
-            name: item.name,
-            price: item.salePrice || item.price,
-            quantity: item.quantity,
-          })),
+          basketItems: basketItems,
         }),
       })
 
       const data = await response.json()
+
+      // Development ortamında response log
+      if (process.env.NODE_ENV === 'development') {
+        console.log('PayTR Response:', {
+          status: response.status,
+          ok: data.ok,
+          hasToken: !!data.token,
+          error: data.error,
+        })
+      }
 
       if (data.ok && data.token) {
         // PayTR iframe URL'ini oluştur
@@ -167,7 +209,12 @@ export default function CheckoutPage() {
         setIframeUrl(iframeUrl)
         setShowIframe(true)
       } else {
-        alert(data.error || 'Ödeme başlatılamadı')
+        const errorMessage = data.error || 'Ödeme başlatılamadı'
+        console.error('PayTR Init Error:', errorMessage, {
+          status: response.status,
+          responseData: data,
+        })
+        alert(errorMessage)
         setLoading(false)
       }
     } catch (error) {

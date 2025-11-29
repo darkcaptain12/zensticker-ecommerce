@@ -3,30 +3,7 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
-
-interface PaytrInitRequest {
-  orderNumber: string
-  amount: number
-  email: string
-  userName: string
-  userPhone: string
-  userAddress: string
-  userCity: string
-  userCountry?: string
-  installment?: number
-  basketItems: Array<{
-    name: string
-    price: number      // TL cinsinden (ör: 350)
-    quantity?: number
-  }>
-}
-
-interface PaytrInitResponse {
-  ok: boolean
-  token?: string
-  orderNumber?: string
-  error?: string
-}
+import type { PaytrInitRequest, PaytrInitResponse } from '@/types/paytr'
 
 interface PaytrApiResponse {
   status: string
@@ -164,19 +141,82 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaytrInitResp
 
     const body: PaytrInitRequest = await req.json()
 
-    if (
-      !body.orderNumber ||
-      !body.amount ||
-      !body.email ||
-      !body.userName ||
-      !body.userPhone ||
-      !body.userAddress ||
-      !body.userCity ||
-      !body.basketItems ||
-      body.basketItems.length === 0
-    ) {
+    // Development ortamında detaylı log
+    if (process.env.NODE_ENV === 'development') {
+      console.log('PAYTR INIT BODY:', {
+        orderNumber: body.orderNumber,
+        amount: body.amount,
+        amountType: typeof body.amount,
+        email: body.email,
+        userName: body.userName,
+        userPhone: body.userPhone,
+        userAddress: body.userAddress?.substring(0, 50) + '...',
+        userCity: body.userCity,
+        basketItemsCount: body.basketItems?.length || 0,
+        basketItems: body.basketItems?.map(item => ({
+          name: item.name?.substring(0, 30),
+          price: item.price,
+          quantity: item.quantity || 1,
+        })),
+      })
+    }
+
+    // Geliştirilmiş validasyon - her alanı ayrı ayrı kontrol et
+    const missingFields: string[] = []
+
+    // orderNumber: string, trim sonrası boş olmamalı
+    if (!body.orderNumber || typeof body.orderNumber !== 'string' || body.orderNumber.trim().length === 0) {
+      missingFields.push('orderNumber')
+    }
+
+    // amount: null/undefined olmamalı ve Number.isFinite TRUE olmalı (0 geçerli)
+    if (body.amount == null || !Number.isFinite(body.amount)) {
+      missingFields.push('amount')
+    }
+
+    // email: string ve trim sonrası boş olmamalı
+    if (!body.email || typeof body.email !== 'string' || body.email.trim().length === 0) {
+      missingFields.push('email')
+    }
+
+    // userName: string ve trim sonrası boş olmamalı
+    if (!body.userName || typeof body.userName !== 'string' || body.userName.trim().length === 0) {
+      missingFields.push('userName')
+    }
+
+    // userPhone: string ve trim sonrası boş olmamalı
+    if (!body.userPhone || typeof body.userPhone !== 'string' || body.userPhone.trim().length === 0) {
+      missingFields.push('userPhone')
+    }
+
+    // userAddress: string ve trim sonrası boş olmamalı
+    if (!body.userAddress || typeof body.userAddress !== 'string' || body.userAddress.trim().length === 0) {
+      missingFields.push('userAddress')
+    }
+
+    // userCity: string ve trim sonrası boş olmamalı
+    if (!body.userCity || typeof body.userCity !== 'string' || body.userCity.trim().length === 0) {
+      missingFields.push('userCity')
+    }
+
+    // basketItems: dizi ve length > 0 olmalı
+    if (!Array.isArray(body.basketItems) || body.basketItems.length === 0) {
+      missingFields.push('basketItems')
+    }
+
+    // Eksik alanlar varsa detaylı hata döndür
+    if (missingFields.length > 0) {
+      const errorMessage = `Missing required fields: ${missingFields.join(', ')}`
+      if (process.env.NODE_ENV === 'development') {
+        console.error('PAYTR VALIDATION ERROR:', errorMessage, {
+          receivedAmount: body.amount,
+          receivedAmountType: typeof body.amount,
+          receivedOrderNumber: body.orderNumber,
+          receivedBasketItemsLength: body.basketItems?.length,
+        })
+      }
       return NextResponse.json(
-        { ok: false, error: 'Missing required fields' },
+        { ok: false, error: errorMessage },
         { status: 400 }
       )
     }
@@ -185,7 +225,31 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaytrInitResp
     // (PayTR için yeterli, hash ile uyumlu olduğu sürece sorun yok)
     const user_ip = '127.0.0.1'
 
-    const payment_amount = Math.round(body.amount * 100).toString()
+    // amount'ı number'a çevir ve kuruş cinsine çevir (PayTR kuruş bekliyor)
+    // amount zaten validasyon geçti, ama yine de güvenlik için Number() kullan
+    const amountNumber = Number(body.amount)
+    if (!Number.isFinite(amountNumber) || amountNumber < 0) {
+      const errorMsg = `Invalid amount: ${body.amount} (must be a positive number)`
+      if (process.env.NODE_ENV === 'development') {
+        console.error('PAYTR AMOUNT ERROR:', errorMsg)
+      }
+      return NextResponse.json(
+        { ok: false, error: errorMsg },
+        { status: 400 }
+      )
+    }
+
+    const payment_amount = Math.round(amountNumber * 100).toString()
+    
+    // Development ortamında amount kontrolü logla
+    if (process.env.NODE_ENV === 'development') {
+      console.log('PAYTR AMOUNT CALCULATION:', {
+        originalAmount: body.amount,
+        amountNumber,
+        payment_amount_kurus: payment_amount,
+        payment_amount_tl: (Number(payment_amount) / 100).toFixed(2),
+      })
+    }
     const installment = body.installment || 0
     const no_installment = '0'
     const max_installment = installment > 0 ? String(installment) : '0'
@@ -259,8 +323,19 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaytrInitResp
     const statusText = response.statusText
     const raw = await response.text()
 
+    // PayTR response logları - her zaman logla (production'da da önemli)
     console.log('PayTR HTTP status:', statusCode, statusText)
     console.log('PayTR raw response:', raw)
+    
+    // Development ortamında daha detaylı log
+    if (process.env.NODE_ENV === 'development') {
+      console.log('PayTR Request Summary:', {
+        merchant_oid: merchant_oid,
+        payment_amount: payment_amount,
+        email: body.email,
+        basketItemsCount: body.basketItems.length,
+      })
+    }
 
     let data: PaytrApiResponse | null = null
 

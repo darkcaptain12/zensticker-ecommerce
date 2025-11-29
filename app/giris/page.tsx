@@ -79,7 +79,7 @@ function LoginForm() {
             } else if (sessionData?.user?.role === 'ADMIN') {
               console.log('🔀 Admin paneline yönlendiriliyor')
               window.location.href = '/admin'
-            } else {
+      } else {
               console.log('🔀 Ana sayfaya yönlendiriliyor')
               window.location.href = '/'
             }
