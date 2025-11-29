@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
+import { prisma } from '@/lib/prisma'
 import type { PaytrInitRequest, PaytrInitResponse } from '@/types/paytr'
 
 interface PaytrApiResponse {
@@ -257,7 +258,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaytrInitResp
     const test_mode = test_mode_env === '1' ? '1' : '0'
 
     const baseUrlClean = baseUrl.replace(/\/$/, '')
-    const merchant_ok_url = `${baseUrlClean}/odeme/paytr-success`
+    // Success URL'ine orderNumber ekle (sipariş bilgilerini göstermek için)
+    const merchant_ok_url = `${baseUrlClean}/odeme/paytr-success?orderNumber=${encodeURIComponent(body.orderNumber)}`
     const merchant_fail_url = `${baseUrlClean}/odeme/paytr-fail`
 
     const user_basket = buildUserBasket(body.basketItems)
@@ -377,11 +379,108 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaytrInitResp
     }
 
     if (data.status === 'success' && data.token) {
-      return NextResponse.json({
-        ok: true,
-        token: data.token,
-        orderNumber: body.orderNumber,
-      })
+      // PayTR token başarılı - siparişi veritabanına kaydet
+      try {
+        // Kullanıcıyı email ile bul (varsa)
+        const user = await prisma.user.findUnique({
+          where: { email: body.email },
+          select: { id: true },
+        })
+
+        // Campaign kontrolü - subtotal'e göre aktif kampanya bul
+        const subtotal = body.basketItems.reduce(
+          (sum, item) => sum + (item.price * (item.quantity || 1)),
+          0
+        )
+        
+        let campaignId: string | null = null
+        if (subtotal > 0) {
+          const now = new Date()
+          const campaign = await prisma.campaign.findFirst({
+            where: {
+              isActive: true,
+              type: 'GENERAL',
+              startDate: { lte: now },
+              endDate: { gte: now },
+              minPurchaseAmount: { lte: subtotal },
+            },
+            orderBy: [
+              { minPurchaseAmount: 'desc' },
+              { discountPercent: 'desc' },
+            ],
+            select: { id: true },
+          })
+          campaignId = campaign?.id || null
+        }
+
+        // Siparişi PENDING olarak kaydet
+        // Eğer aynı orderNumber ile sipariş varsa güncelle (idempotent)
+        const order = await prisma.order.upsert({
+          where: { orderNumber: body.orderNumber },
+          update: {
+            // Sipariş zaten varsa güncelleme yapma (callback'te güncellenecek)
+            paytrToken: data.token,
+          },
+          create: {
+            orderNumber: body.orderNumber,
+            userId: user?.id || null,
+            customerName: body.userName,
+            customerEmail: body.email,
+            customerPhone: body.userPhone,
+            customerAddress: body.userAddress,
+            status: 'AWAITING_PAYMENT', // PayTR'ye gönderildi, ödeme bekleniyor
+            totalAmount: amountNumber,
+            paymentProvider: 'PAYTR',
+            paytrToken: data.token,
+            campaignId: campaignId,
+            items: {
+              create: body.basketItems.map((item) => ({
+                productId: item.productId,
+                quantity: item.quantity || 1,
+                unitPrice: item.price,
+                lineTotal: item.price * (item.quantity || 1),
+                customText: item.customText || null,
+                customFont: item.customFont || null,
+              })),
+            },
+          },
+        })
+
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ Order created:', {
+            orderNumber: order.orderNumber,
+            orderId: order.id,
+            status: order.status,
+            totalAmount: order.totalAmount,
+            itemsCount: body.basketItems.length,
+          })
+        }
+
+        return NextResponse.json({
+          ok: true,
+          token: data.token,
+          orderNumber: body.orderNumber,
+        })
+      } catch (orderError) {
+        // Sipariş kaydı başarısız olsa bile token'ı döndür (kullanıcı ödeme yapabilsin)
+        // Callback'te sipariş kontrolü yapılacak
+        console.error('❌ Order creation error (but token is valid):', orderError)
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Order creation details:', {
+            orderNumber: body.orderNumber,
+            email: body.email,
+            error: orderError instanceof Error ? orderError.message : 'Unknown error',
+          })
+        }
+
+        // Token geçerli olduğu için başarılı döndür, ama logla
+        return NextResponse.json({
+          ok: true,
+          token: data.token,
+          orderNumber: body.orderNumber,
+        })
+      }
     } else {
       const errorReason = data.reason || 'PayTR token alınamadı'
       console.error('PayTR get-token error:', errorReason, 'raw:', raw)

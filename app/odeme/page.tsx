@@ -148,9 +148,12 @@ export default function CheckoutPage() {
         const quantity = Number.isFinite(item.quantity) && item.quantity > 0 ? Number(item.quantity) : 1
         
         return {
+          productId: item.productId, // Sipariş kaydı için gerekli
           name: String(item.name || '').substring(0, 255), // PayTR max 255 karakter
           price: price,
           quantity: quantity,
+          customText: item.customText || undefined,
+          customFont: item.customFont || undefined,
         }
       })
 

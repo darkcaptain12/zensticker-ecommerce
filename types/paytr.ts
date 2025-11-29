@@ -14,9 +14,12 @@ export interface PaytrInitRequest {
   userCountry?: string
   installment?: number
   basketItems: Array<{
+    productId: string // Sipariş kaydı için gerekli
     name: string
     price: number
     quantity?: number
+    customText?: string // Özel metin varsa
+    customFont?: string // Özel font varsa
   }>
 }
 
