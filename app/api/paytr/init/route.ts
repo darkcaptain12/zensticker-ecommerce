@@ -71,7 +71,6 @@ function createPaytrToken(
   max_installment: string,
   currency: string,
   test_mode: string,
-  non_3d: string,
   merchant_key: string,
   merchant_salt: string
 ): string {
@@ -85,11 +84,11 @@ function createPaytrToken(
     String(no_installment) +
     String(max_installment) +
     String(currency) +
-    String(test_mode) +
-    String(non_3d) +
-    String(merchant_salt)
+    String(test_mode);
 
-  return crypto.createHmac('sha256', merchant_key).update(hashStr).digest('base64')
+  const paytrTokenStr = hashStr + String(merchant_salt);
+
+  return crypto.createHmac('sha256', merchant_key).update(paytrTokenStr).digest('base64');
 }
 
 /**
@@ -106,7 +105,6 @@ function buildPaytrParams(
   max_installment: string,
   currency: string,
   test_mode: string,
-  non_3d: string,
   merchant_ok_url: string,
   merchant_fail_url: string,
   user_name: string,
@@ -127,7 +125,6 @@ function buildPaytrParams(
   params.append('max_installment', String(max_installment))
   params.append('currency', String(currency))
   params.append('test_mode', String(test_mode))
-  params.append('non_3d', String(non_3d))
   params.append('merchant_ok_url', String(merchant_ok_url))
   params.append('merchant_fail_url', String(merchant_fail_url))
   params.append('user_name', String(user_name))
@@ -194,7 +191,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaytrInitResp
     const max_installment = installment > 0 ? String(installment) : '0'
     const currency = 'TL'
     const test_mode = test_mode_env === '1' ? '1' : '0'
-    const non_3d = '0'
 
     // Build URLs
     const baseUrlClean = baseUrl.replace(/\/$/, '')
@@ -230,7 +226,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaytrInitResp
       max_installment,
       currency,
       test_mode,
-      non_3d,
       merchant_key,
       merchant_salt
     )
@@ -247,7 +242,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaytrInitResp
       max_installment,
       currency,
       test_mode,
-      non_3d,
       merchant_ok_url,
       merchant_fail_url,
       user_name,
