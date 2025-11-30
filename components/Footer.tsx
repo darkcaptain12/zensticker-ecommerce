@@ -191,6 +191,9 @@ export async function Footer() {
               &copy; {new Date().getFullYear()} Zen Sticker. Tüm hakları saklıdır.
             </p>
             <div className="flex gap-6 text-sm text-gray-400">
+              <Link href="/kvkk" className="hover:text-primary transition-all hover:shadow-neon-sm">
+                KVKK & Çerez Politikası
+              </Link>
               <Link href="/kvkk-ve-gizlilik" className="hover:text-primary transition-all hover:shadow-neon-sm">
                 Gizlilik Politikası
               </Link>

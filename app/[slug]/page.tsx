@@ -19,27 +19,26 @@ const reservedRoutes = [
   'arama',
   'kampanyalar',
   'kampanya',
+  'kvkk', // KVKK sayfası özel bir sayfa olduğu için reserved
 ]
 
-export async function generateStaticParams() {
-  const pages = await prisma.staticPage.findMany({
-    where: { isActive: true },
-  })
-
-  return pages
-    .filter((page) => !reservedRoutes.includes(page.slug))
-    .map((page) => ({
-      slug: page.slug,
-    }))
-}
+// Disable caching - always fetch fresh data from database
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
+  
+  // Check if it's a reserved route
+  if (reservedRoutes.includes(slug)) {
+    return { title: 'Sayfa Bulunamadı | Zen Sticker' }
+  }
+
   const page = await prisma.staticPage.findUnique({
     where: { slug },
   })
 
-  if (!page) {
+  if (!page || !page.isActive) {
     return { title: 'Sayfa Bulunamadı | Zen Sticker' }
   }
 
@@ -51,11 +50,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function StaticPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
+  
   // Check if it's a reserved route
   if (reservedRoutes.includes(slug)) {
     notFound()
   }
 
+  // Always fetch fresh data from database (no caching)
   const page = await prisma.staticPage.findUnique({
     where: { slug },
   })
